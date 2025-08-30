@@ -1,0 +1,7 @@
+[package]
+name = "compiler"
+description = "A compiler for Jack programs, where Jack is the From Nand To Tetris high level language"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
