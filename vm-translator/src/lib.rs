@@ -36,9 +36,13 @@ fn parse_vm_program(vm_program: Vec<String>) -> Vec<String> {
     asm_commands
 }
 
-pub fn translate_vm_program_to_file(vm_program_path: &str) {
+pub fn parse_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
     let vm_program = read_vm_program_from_file(vm_program_path);
-    let asm_instructions = parse_vm_program(vm_program);
+    parse_vm_program(vm_program)
+}
+
+pub fn translate_vm_program_to_file(vm_program_path: &str) {
+    let asm_instructions = parse_vm_program_from_file(vm_program_path);
 
     let mut asm_program_file = File::options()
         .create_new(true)
