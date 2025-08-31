@@ -20,12 +20,12 @@ fn read_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
     }
 }
 
-fn parse_vm_program(vm_program: Vec<String>) -> Vec<String> {
+fn parse_vm_program(vm_program: Vec<String>, program_name: &str) -> Vec<String> {
     let mut asm_commands: Vec<String> = vm_program
         .iter()
         .flat_map(|vm_instruction| {
             let vm_command = parse(&vm_instruction);
-            generate_asm(vm_command)
+            generate_asm(vm_command, program_name)
         })
         .collect();
 
@@ -37,8 +37,15 @@ fn parse_vm_program(vm_program: Vec<String>) -> Vec<String> {
 }
 
 pub fn parse_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
+    let vm_program_path_segments: Vec<&str> = vm_program_path.split("/").collect();
+    let vm_program_name: &str = vm_program_path_segments
+        .last()
+        .unwrap()
+        .split(".")
+        .collect::<Vec<&str>>()[0];
+
     let vm_program = read_vm_program_from_file(vm_program_path);
-    parse_vm_program(vm_program)
+    parse_vm_program(vm_program, vm_program_name)
 }
 
 pub fn translate_vm_program_to_file(vm_program_path: &str) {

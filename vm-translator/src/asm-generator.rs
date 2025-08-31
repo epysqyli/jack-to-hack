@@ -15,7 +15,7 @@ macro_rules! incr_stack_pointer {
     };
 }
 
-pub fn generate_asm(vm_command: Command) -> Vec<String> {
+pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
     let mut asm_instructions: Vec<String> = vec![];
 
     match vm_command.op {
@@ -65,6 +65,18 @@ pub fn generate_asm(vm_command: Command) -> Vec<String> {
                     asm_instructions.push("M=D".to_string());
                     incr_stack_pointer!(asm_instructions);
                 }
+                Some(MemorySegment::Static) => {
+                    if let Some(val) = vm_command.val {
+                        asm_instructions.push(format!("@{}.{}", program_name, val));
+                    } else {
+                        panic!("Push operations from static require a numeric value")
+                    }
+                    asm_instructions.push("D=M".to_string());
+                    asm_instructions.push("@SP".to_string());
+                    asm_instructions.push("A=M".to_string());
+                    asm_instructions.push("M=D".to_string());
+                    incr_stack_pointer!(asm_instructions);
+                }
                 _ => panic!("TODO"),
             };
         }
@@ -108,6 +120,16 @@ pub fn generate_asm(vm_command: Command) -> Vec<String> {
                     } else {
                         panic!("Pop operations require a memory segment index")
                     }
+                }
+                Some(MemorySegment::Static) => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    if let Some(val) = vm_command.val {
+                        asm_instructions.push(format!("@{}.{}", program_name, val));
+                    } else {
+                        panic!("Pop operations on static require a numeric value")
+                    }
+                    asm_instructions.push("M=D".to_string());
                 }
                 _ => panic!("TODO"),
             }
@@ -173,6 +195,8 @@ pub fn generate_asm(vm_command: Command) -> Vec<String> {
 mod tests {
     use super::*;
 
+    const TEST_PROGRAM_NAME: &'static str = "TestProgram";
+
     #[test]
     fn stack_push() {
         let vm_command: Command = Command {
@@ -183,7 +207,7 @@ mod tests {
 
         assert_eq!(
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            generate_asm(vm_command)
+            generate_asm(vm_command, TEST_PROGRAM_NAME)
         );
     }
 
@@ -196,7 +220,7 @@ mod tests {
             val: None,
         };
 
-        generate_asm(vm_command);
+        generate_asm(vm_command, TEST_PROGRAM_NAME);
     }
 
     fn assert_commands_eq(vm_commands: Vec<Command>, expected_asm: Vec<Vec<&str>>) {
@@ -204,7 +228,9 @@ mod tests {
             .iter()
             .zip(expected_asm)
             // Can we use Rc here instead of deriving Copy+Clone on Command?
-            .for_each(|(vm_command, expected)| assert_eq!(expected, generate_asm(*vm_command)));
+            .for_each(|(vm_command, expected)| {
+                assert_eq!(expected, generate_asm(*vm_command, TEST_PROGRAM_NAME))
+            });
     }
 
     #[test]
@@ -651,6 +677,35 @@ mod tests {
             vec!["@SP", "M=M-1", "A=M", "D=M", "@R9", "M=D"],
             // // push to stack from temp index 4
             vec!["@R9", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+        ];
+
+        assert_commands_eq(vm_commands, expected_asm);
+    }
+
+    #[test]
+    fn push_to_stack_and_pop_to_static_and_push_back_to_stack() {
+        let vm_commands: Vec<Command> = vec![
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(5),
+            },
+            Command {
+                op: Operation::Pop,
+                segment: Some(MemorySegment::Static),
+                val: Some(1),
+            },
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Static),
+                val: Some(1),
+            },
+        ];
+
+        let expected_asm = vec![
+            vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@TestProgram.1", "M=D"],
+            vec!["@TestProgram.1", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
