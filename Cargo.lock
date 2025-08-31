@@ -7,8 +7,13 @@ name = "compiler"
 version = "0.1.0"
 dependencies = [
  "hack-assembler",
+ "vm-translator",
 ]
 
 [[package]]
 name = "hack-assembler"
+version = "0.1.0"
+
+[[package]]
+name = "vm-translator"
 version = "0.1.0"

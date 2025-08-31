@@ -6,4 +6,4 @@ edition = "2024"
 
 [dependencies]
 hack-assembler = { path = "../hack-assembler" }
-
+vm-translator = { path = "../vm-translator" }
