@@ -77,7 +77,23 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                     asm_instructions.push("M=D".to_string());
                     incr_stack_pointer!(asm_instructions);
                 }
-                _ => panic!("TODO"),
+                Some(MemorySegment::Pointer) => {
+                    if let Some(val) = vm_command.val {
+                        match val {
+                            0 => asm_instructions.push(format!("@THIS")),
+                            1 => asm_instructions.push(format!("@THAT")),
+                            _ => panic!("Pop operations on pointer allow values 0 or 1"),
+                        }
+                    } else {
+                        panic!("Push from pointer requires index 0 or 1")
+                    }
+                    asm_instructions.push("D=M".to_string());
+                    asm_instructions.push("@SP".to_string());
+                    asm_instructions.push("A=M".to_string());
+                    asm_instructions.push("M=D".to_string());
+                    incr_stack_pointer!(asm_instructions);
+                }
+                None => panic!("Memory Segment is mandatory for push operations"),
             };
         }
         Operation::Pop => {
@@ -131,7 +147,22 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                     }
                     asm_instructions.push("M=D".to_string());
                 }
-                _ => panic!("TODO"),
+                Some(MemorySegment::Pointer) => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    if let Some(val) = vm_command.val {
+                        match val {
+                            0 => asm_instructions.push(format!("@THIS")),
+                            1 => asm_instructions.push(format!("@THAT")),
+                            _ => panic!("Pop operations on pointer allow values 0 or 1"),
+                        }
+                    } else {
+                        panic!("Pop operations on static require a numeric value")
+                    }
+                    asm_instructions.push("M=D".to_string());
+                }
+                Some(MemorySegment::Constant) => panic!("Cannot pop from Constant"),
+                None => panic!("Memory Segment is mandatory for pop operations"),
             }
         }
         Operation::Add | Operation::Sub | Operation::And | Operation::Or => {
@@ -706,6 +737,53 @@ mod tests {
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@SP", "M=M-1", "A=M", "D=M", "@TestProgram.1", "M=D"],
             vec!["@TestProgram.1", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+        ];
+
+        assert_commands_eq(vm_commands, expected_asm);
+    }
+
+    #[test]
+    fn push_to_stack_and_pop_to_pointers() {
+        let vm_commands: Vec<Command> = vec![
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(5),
+            },
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(6),
+            },
+            Command {
+                op: Operation::Pop,
+                segment: Some(MemorySegment::Pointer),
+                val: Some(0),
+            },
+            Command {
+                op: Operation::Pop,
+                segment: Some(MemorySegment::Pointer),
+                val: Some(1),
+            },
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Pointer),
+                val: Some(0),
+            },
+            Command {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Pointer),
+                val: Some(1),
+            },
+        ];
+
+        let expected_asm = vec![
+            vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@6", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@THIS", "M=D"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@THAT", "M=D"],
+            vec!["@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
