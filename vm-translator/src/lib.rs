@@ -63,10 +63,3 @@ pub fn translate_vm_program_to_file(vm_program_path: &str) {
         Err(err) => panic!("{err}"),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    #[ignore = "TODO"]
-    fn stack_addition_is_parsed_correctly() {}
-}
