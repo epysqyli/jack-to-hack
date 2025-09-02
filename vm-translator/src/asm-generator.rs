@@ -8,6 +8,14 @@ macro_rules! address_top_stack {
     };
 }
 
+macro_rules! assign_d_reg_to_stack {
+    ($asm_instructions: ident) => {
+        $asm_instructions.push("@SP".to_string());
+        $asm_instructions.push("A=M".to_string());
+        $asm_instructions.push("M=D".to_string());
+    };
+}
+
 macro_rules! incr_stack_pointer {
     ($asm_instructions: ident) => {
         $asm_instructions.push("@SP".to_string());
@@ -28,9 +36,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                     } else {
                         panic!("Push operations require a value to push on the stack")
                     }
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=D".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
                     incr_stack_pointer!(asm_instructions);
                 }
                 Some(
@@ -48,9 +54,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                     asm_instructions.push(vm_command.segment.unwrap().as_asm_mnemonic());
                     asm_instructions.push("A=D+M".to_string());
                     asm_instructions.push("D=M".to_string());
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=D".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
                     incr_stack_pointer!(asm_instructions);
                 }
                 Some(MemorySegment::Temp) => {
@@ -60,9 +64,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                     } else {
                         panic!("Push operations on TEMP require a memory segment index")
                     }
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=D".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
                     incr_stack_pointer!(asm_instructions);
                 }
                 Some(MemorySegment::Static) => {
@@ -72,9 +74,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                         panic!("Push operations from static require a numeric value")
                     }
                     asm_instructions.push("D=M".to_string());
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=D".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
                     incr_stack_pointer!(asm_instructions);
                 }
                 Some(MemorySegment::Pointer) => {
@@ -88,9 +88,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                         panic!("Push from pointer requires index 0 or 1")
                     }
                     asm_instructions.push("D=M".to_string());
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=D".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
                     incr_stack_pointer!(asm_instructions);
                 }
                 None => panic!("Memory Segment is mandatory for push operations"),
