@@ -23,6 +23,13 @@ macro_rules! incr_stack_pointer {
     };
 }
 
+macro_rules! decr_stack_pointer {
+    ($asm_instructions: ident) => {
+        $asm_instructions.push("@SP".to_string());
+        $asm_instructions.push("M=M-1".to_string());
+    };
+}
+
 pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
     let mut asm_instructions: Vec<String> = vec![];
 
@@ -179,17 +186,15 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                 Operation::Or => asm_instructions.push("M=D|M".to_string()),
                 _ => (),
             }
-            incr_stack_pointer!(asm_instructions);
+            decr_stack_pointer!(asm_instructions);
         }
         Operation::Neg => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=-M".to_string());
-            incr_stack_pointer!(asm_instructions);
         }
         Operation::Not => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=!M".to_string());
-            incr_stack_pointer!(asm_instructions);
         }
         Operation::Eq | Operation::Gt | Operation::Lt => {
             address_top_stack!(asm_instructions);
@@ -291,7 +296,7 @@ mod tests {
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M-1",
             ],
         ];
 
@@ -324,7 +329,7 @@ mod tests {
             // start from stack[1], assign D to M, incr stack
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1",
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M-1",
             ],
         ];
 
@@ -355,7 +360,7 @@ mod tests {
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M+1",
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M-1",
             ],
         ];
 
@@ -386,7 +391,7 @@ mod tests {
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M+1",
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M-1",
             ],
         ];
 
@@ -410,7 +415,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=-M", "@SP", "M=M+1"],
+            vec!["@SP", "M=M-1", "A=M", "M=-M"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -433,7 +438,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=!M", "@SP", "M=M+1"],
+            vec!["@SP", "M=M-1", "A=M", "M=!M"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
