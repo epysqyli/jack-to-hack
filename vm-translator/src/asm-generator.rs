@@ -45,7 +45,7 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
                         | MemorySegment::This
                         | MemorySegment::That => {
                             if vm_command.val.is_none() {
-                                panic!("Push operations require a value to push on the stack")
+                                panic!("Push operations from memory segments require an index")
                             }
                             asm_instructions.push(format!("@{}", vm_command.val.unwrap()));
                             asm_instructions.push("D=A".to_string());
