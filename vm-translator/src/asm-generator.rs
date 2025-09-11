@@ -1,4 +1,5 @@
-use crate::parser::{Command, MemorySegment, Operation};
+use crate::parser::Command;
+use crate::parser::operation::*;
 
 macro_rules! address_top_stack {
     ($asm_instructions: ident) => {
@@ -257,8 +258,6 @@ pub fn generate_asm(vm_command: Command, program_name: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::OperationArgs;
-
     use super::*;
 
     const TEST_PROGRAM_NAME: &'static str = "TestProgram";
