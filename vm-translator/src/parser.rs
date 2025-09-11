@@ -6,7 +6,7 @@ use crate::parser::{
     operation::{MemorySegment, Operation, OperationArgs},
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Command {
     Branching(BranchingArgs),
     Function, // TODO: add underlying type

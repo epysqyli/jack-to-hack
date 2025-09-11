@@ -1,11 +1,11 @@
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq)]
 pub struct OperationArgs {
     pub op: Operation,
     pub segment: Option<MemorySegment>,
     pub val: Option<i16>,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum Operation {
     Push,
     Pop,
@@ -41,7 +41,7 @@ impl TryFrom<&str> for Operation {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq)]
 pub enum MemorySegment {
     Constant,
     Local,

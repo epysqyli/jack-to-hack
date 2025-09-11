@@ -25,7 +25,7 @@ fn parse_vm_program(vm_program: Vec<String>, program_name: &str) -> Vec<String> 
         .iter()
         .flat_map(|vm_instruction| {
             let vm_command = parse(&vm_instruction);
-            generate_asm(vm_command, program_name)
+            generate_asm(&vm_command, program_name)
         })
         .collect();
 
