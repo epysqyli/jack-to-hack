@@ -1,10 +1,15 @@
+pub mod branching;
+pub mod function;
 pub mod operation;
-use crate::parser::operation::{MemorySegment, Operation, OperationArgs};
+use crate::parser::{
+    branching::BranchingArgs,
+    operation::{MemorySegment, Operation, OperationArgs},
+};
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Command {
-    Branching, // TODO: add underlying type
-    Function,  // TODO: add underlying type
+    Branching(BranchingArgs),
+    Function, // TODO: add underlying type
     Operation(OperationArgs),
 }
 
@@ -12,7 +17,10 @@ pub fn parse(vm_command: &str) -> Command {
     let vm_tokens: Vec<&str> = vm_command.split(' ').collect();
 
     match vm_tokens[0] {
-        "label" | "goto" | "if-goto" => Command::Branching,
+        "label" | "goto" | "if-goto" => Command::Branching(BranchingArgs {
+            cmd: vm_tokens[0].try_into().unwrap(),
+            label: vm_tokens[1].to_string(),
+        }),
         "function" | "call" | "return" => Command::Function,
         "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
             let op = Operation::try_from(vm_tokens[0]).unwrap();
