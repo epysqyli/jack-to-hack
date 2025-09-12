@@ -1,0 +1,8 @@
+goto second
+push constant 1
+
+label second
+push constant 2
+push constant 3
+add
+

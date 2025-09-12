@@ -40,8 +40,16 @@ pub fn generate_asm(vm_command: &Command, program_name: &str) -> Vec<String> {
             BranchingCommand::Label => {
                 asm_instructions.push(format!("({})", branching_args.label));
             }
-            BranchingCommand::Goto => panic!("TODO"),
-            BranchingCommand::IfGoto => panic!("TODO"),
+            BranchingCommand::Goto => {
+                asm_instructions.push(format!("@{}", branching_args.label));
+                asm_instructions.push("0;JMP".to_string());
+            }
+            BranchingCommand::IfGoto => {
+                address_top_stack!(asm_instructions);
+                asm_instructions.push("D=M".to_string());
+                asm_instructions.push(format!("@{}", branching_args.label));
+                asm_instructions.push("D;JNE".to_string());
+            },
         },
         Command::Function => panic!("TODO"),
         Command::Operation(operation_args) => {
@@ -834,16 +842,47 @@ mod tests {
     }
 
     #[test]
-    fn define_label() {
+    fn define_and_goto_label() {
         let label = "TEST".to_string();
+        let goto_label = "TEST".to_string();
 
-        let vm_commands: Vec<Command> = vec![Command::Branching(BranchingArgs {
-            cmd: BranchingCommand::Label,
-            label: label,
-        })];
+        let vm_commands: Vec<Command> = vec![
+            Command::Branching(BranchingArgs {
+                cmd: BranchingCommand::Label,
+                label: label,
+            }),
+            Command::Branching(BranchingArgs {
+                cmd: BranchingCommand::Goto,
+                label: goto_label,
+            }),
+        ];
 
-        let expected_asm = vec![vec!["(TEST)"]];
+        let expected_asm = vec![vec!["(TEST)"], vec!["@TEST", "0;JMP"]];
 
-        assert_commands_eq(vec![&vm_commands[0]], expected_asm);
+        assert_commands_eq(vec![&vm_commands[0], &vm_commands[1]], expected_asm);
+    }
+
+    #[test]
+    fn define_and_if_goto_label() {
+        let label = "TEST".to_string();
+        let goto_label = "TEST".to_string();
+
+        let vm_commands: Vec<Command> = vec![
+            Command::Branching(BranchingArgs {
+                cmd: BranchingCommand::Label,
+                label: label,
+            }),
+            Command::Branching(BranchingArgs {
+                cmd: BranchingCommand::IfGoto,
+                label: goto_label,
+            }),
+        ];
+
+        let expected_asm = vec![
+            vec!["(TEST)"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@TEST", "D;JNE"],
+        ];
+
+        assert_commands_eq(vec![&vm_commands[0], &vm_commands[1]], expected_asm);
     }
 }

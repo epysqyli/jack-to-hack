@@ -85,4 +85,40 @@ mod tests {
 
         assert_eq!(expected, commands);
     }
+
+    #[test]
+    fn define_label() {
+        let vm_program: &str = "label SomeLabel";
+
+        let expected_command = Command::Branching(BranchingArgs {
+            cmd: branching::BranchingCommand::Label,
+            label: "SomeLabel".to_string(),
+        });
+
+        assert_eq!(expected_command, parse(vm_program));
+    }
+
+    #[test]
+    fn goto_label() {
+        let vm_program: &str = "goto SomeLabel";
+
+        let expected_command = Command::Branching(BranchingArgs {
+            cmd: branching::BranchingCommand::Goto,
+            label: "SomeLabel".to_string(),
+        });
+
+        assert_eq!(expected_command, parse(vm_program));
+    }
+
+    #[test]
+    fn if_goto_label() {
+        let vm_program: &str = "if-goto SomeLabel";
+
+        let expected_command = Command::Branching(BranchingArgs {
+            cmd: branching::BranchingCommand::IfGoto,
+            label: "SomeLabel".to_string(),
+        });
+
+        assert_eq!(expected_command, parse(vm_program));
+    }
 }
