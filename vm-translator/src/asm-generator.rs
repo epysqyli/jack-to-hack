@@ -1,5 +1,5 @@
 use crate::parser::Command;
-use crate::parser::branching::BranchingCommand;
+use crate::parser::branching::{BranchingArgs, BranchingCommand};
 use crate::parser::operation::*;
 
 macro_rules! address_top_stack {
@@ -32,241 +32,240 @@ macro_rules! decr_stack_pointer {
     };
 }
 
+fn generate_branching_asm(branching_args: &BranchingArgs, asm_instructions: &mut Vec<String>) {
+    match branching_args.cmd {
+        BranchingCommand::Label => {
+            asm_instructions.push(format!("({})", branching_args.label));
+        }
+        BranchingCommand::Goto => {
+            asm_instructions.push(format!("@{}", branching_args.label));
+            asm_instructions.push("0;JMP".to_string());
+        }
+        BranchingCommand::IfGoto => {
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("D=M".to_string());
+            asm_instructions.push(format!("@{}", branching_args.label));
+            asm_instructions.push("D;JNE".to_string());
+        }
+    }
+}
+
+fn generate_operation_asm(
+    operation_args: &OperationArgs,
+    asm_instructions: &mut Vec<String>,
+    program_name: &str,
+) {
+    match operation_args.op {
+        Operation::Push => {
+            match &operation_args.segment {
+                Some(mem_segment) => {
+                    match mem_segment {
+                        MemorySegment::Constant => {
+                            if operation_args.val.is_none() {
+                                panic!("Push operations require a value to push on the stack")
+                            }
+                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
+                            asm_instructions.push("D=A".to_string());
+                            assign_d_reg_to_stack!(asm_instructions);
+                            incr_stack_pointer!(asm_instructions);
+                        }
+                        MemorySegment::Local
+                        | MemorySegment::Argument
+                        | MemorySegment::This
+                        | MemorySegment::That => {
+                            if operation_args.val.is_none() {
+                                panic!("Push operations from memory segments require an index")
+                            }
+                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
+                            asm_instructions.push("D=A".to_string());
+                            asm_instructions
+                                .push(operation_args.segment.as_ref().unwrap().as_asm_mnemonic());
+                            asm_instructions.push("A=D+M".to_string());
+                            asm_instructions.push("D=M".to_string());
+                            assign_d_reg_to_stack!(asm_instructions);
+                            incr_stack_pointer!(asm_instructions);
+                        }
+                        MemorySegment::Temp => {
+                            if operation_args.val.is_none() {
+                                panic!("Push operations on TEMP require a memory segment index")
+                            }
+                            // TEMP address range is 5..12
+                            asm_instructions.push(format!("@R{}", 5 + operation_args.val.unwrap()));
+                            asm_instructions.push("D=M".to_string());
+                            assign_d_reg_to_stack!(asm_instructions);
+                            incr_stack_pointer!(asm_instructions);
+                        }
+                        MemorySegment::Static => {
+                            if operation_args.val.is_none() {
+                                panic!("Push operations from static require a numeric value")
+                            }
+                            asm_instructions.push(format!(
+                                "@{}.{}",
+                                program_name,
+                                operation_args.val.unwrap()
+                            ));
+                            asm_instructions.push("D=M".to_string());
+                            assign_d_reg_to_stack!(asm_instructions);
+                            incr_stack_pointer!(asm_instructions);
+                        }
+                        MemorySegment::Pointer => {
+                            if operation_args.val.is_none() {
+                                panic!("Push from pointer requires index 0 or 1")
+                            }
+                            match operation_args.val.unwrap() {
+                                0 => asm_instructions.push(format!("@THIS")),
+                                1 => asm_instructions.push(format!("@THAT")),
+                                _ => {
+                                    panic!("Pop operations on pointer allow values 0 or 1")
+                                }
+                            }
+                            asm_instructions.push("D=M".to_string());
+                            assign_d_reg_to_stack!(asm_instructions);
+                            incr_stack_pointer!(asm_instructions);
+                        }
+                    }
+                }
+                None => panic!("Memory Segment is mandatory for push operations"),
+            };
+        }
+        Operation::Pop => {
+            match &operation_args.segment {
+                Some(mem_segment) => {
+                    match mem_segment {
+                        MemorySegment::Local
+                        | MemorySegment::Argument
+                        | MemorySegment::This
+                        | MemorySegment::That => {
+                            address_top_stack!(asm_instructions);
+                            asm_instructions.push("D=M".to_string());
+                            asm_instructions.push("@R13".to_string());
+                            asm_instructions.push("M=D".to_string());
+
+                            if operation_args.val.is_none() {
+                                panic!("Pop operations require a memory segment index")
+                            }
+
+                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
+                            asm_instructions.push("D=A".to_string());
+                            asm_instructions
+                                .push(operation_args.segment.as_ref().unwrap().as_asm_mnemonic());
+                            asm_instructions.push("A=D+M".to_string());
+                            asm_instructions.push("D=A".to_string());
+                            asm_instructions.push("@R14".to_string());
+                            asm_instructions.push("M=D".to_string());
+                            asm_instructions.push("@R13".to_string());
+                            asm_instructions.push("D=M".to_string());
+                            asm_instructions.push("@R14".to_string());
+                            asm_instructions.push("A=M".to_string());
+                            asm_instructions.push("M=D".to_string());
+                        }
+                        MemorySegment::Temp => {
+                            address_top_stack!(asm_instructions);
+                            asm_instructions.push("D=M".to_string());
+                            if operation_args.val.is_none() {
+                                panic!("Pop operations require a memory segment index")
+                            }
+                            // TEMP address range is 5..12
+                            asm_instructions.push(format!("@R{}", 5 + operation_args.val.unwrap()));
+                            asm_instructions.push("M=D".to_string());
+                        }
+                        MemorySegment::Static => {
+                            address_top_stack!(asm_instructions);
+                            asm_instructions.push("D=M".to_string());
+                            if operation_args.val.is_none() {
+                                panic!("Pop operations on static require a numeric value")
+                            }
+                            asm_instructions.push(format!(
+                                "@{}.{}",
+                                program_name,
+                                operation_args.val.unwrap()
+                            ));
+                            asm_instructions.push("M=D".to_string());
+                        }
+                        MemorySegment::Pointer => {
+                            address_top_stack!(asm_instructions);
+                            asm_instructions.push("D=M".to_string());
+                            if operation_args.val.is_none() {
+                                panic!("Pop operations on static require a numeric value")
+                            }
+                            match operation_args.val.unwrap() {
+                                0 => asm_instructions.push(format!("@THIS")),
+                                1 => asm_instructions.push(format!("@THAT")),
+                                _ => {
+                                    panic!("Pop operations on pointer allow values 0 or 1")
+                                }
+                            }
+                            asm_instructions.push("M=D".to_string());
+                        }
+                        MemorySegment::Constant => panic!("Cannot pop from Constant"),
+                    }
+                }
+                None => panic!("Memory Segment is mandatory for pop operations"),
+            }
+        }
+        Operation::Add | Operation::Sub | Operation::And | Operation::Or => {
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("D=M".to_string());
+            address_top_stack!(asm_instructions);
+            match operation_args.op {
+                Operation::Add => asm_instructions.push("M=D+M".to_string()),
+                Operation::Sub => asm_instructions.push("M=M-D".to_string()),
+                Operation::And => asm_instructions.push("M=D&M".to_string()),
+                Operation::Or => asm_instructions.push("M=D|M".to_string()),
+                _ => (),
+            }
+            decr_stack_pointer!(asm_instructions);
+        }
+        Operation::Neg => {
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("M=-M".to_string());
+        }
+        Operation::Not => {
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("M=!M".to_string());
+        }
+        Operation::Eq | Operation::Gt | Operation::Lt => {
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("D=M".to_string());
+            address_top_stack!(asm_instructions);
+            asm_instructions.push("D=M-D".to_string());
+            asm_instructions.push("@PUSH_TRUE".to_string());
+
+            match operation_args.op {
+                Operation::Eq => asm_instructions.push("D;JEQ".to_string()),
+                Operation::Lt => asm_instructions.push("D;JLT".to_string()),
+                Operation::Gt => asm_instructions.push("D;JGT".to_string()),
+                _ => {}
+            }
+
+            asm_instructions.push("(PUSH_FALSE)".to_string());
+            asm_instructions.push("@SP".to_string());
+            asm_instructions.push("A=M".to_string());
+            asm_instructions.push("M=0".to_string());
+            asm_instructions.push("@NO_OP".to_string());
+            asm_instructions.push("0;JMP".to_string());
+
+            asm_instructions.push("(PUSH_TRUE)".to_string());
+            asm_instructions.push("@SP".to_string());
+            asm_instructions.push("A=M".to_string());
+            asm_instructions.push("M=-1".to_string());
+
+            asm_instructions.push("(NO_OP)".to_string());
+            incr_stack_pointer!(asm_instructions);
+        }
+    }
+}
+
 pub fn generate_asm(vm_command: &Command, program_name: &str) -> Vec<String> {
     let mut asm_instructions: Vec<String> = vec![];
 
     match vm_command {
-        Command::Branching(branching_args) => match branching_args.cmd {
-            BranchingCommand::Label => {
-                asm_instructions.push(format!("({})", branching_args.label));
-            }
-            BranchingCommand::Goto => {
-                asm_instructions.push(format!("@{}", branching_args.label));
-                asm_instructions.push("0;JMP".to_string());
-            }
-            BranchingCommand::IfGoto => {
-                address_top_stack!(asm_instructions);
-                asm_instructions.push("D=M".to_string());
-                asm_instructions.push(format!("@{}", branching_args.label));
-                asm_instructions.push("D;JNE".to_string());
-            },
-        },
+        Command::Branching(branching_args) => {
+            generate_branching_asm(branching_args, &mut asm_instructions)
+        }
         Command::Function => panic!("TODO"),
         Command::Operation(operation_args) => {
-            match operation_args.op {
-                Operation::Push => {
-                    match &operation_args.segment {
-                        Some(mem_segment) => {
-                            match mem_segment {
-                                MemorySegment::Constant => {
-                                    if operation_args.val.is_none() {
-                                        panic!(
-                                            "Push operations require a value to push on the stack"
-                                        )
-                                    }
-                                    asm_instructions
-                                        .push(format!("@{}", operation_args.val.unwrap()));
-                                    asm_instructions.push("D=A".to_string());
-                                    assign_d_reg_to_stack!(asm_instructions);
-                                    incr_stack_pointer!(asm_instructions);
-                                }
-                                MemorySegment::Local
-                                | MemorySegment::Argument
-                                | MemorySegment::This
-                                | MemorySegment::That => {
-                                    if operation_args.val.is_none() {
-                                        panic!(
-                                            "Push operations from memory segments require an index"
-                                        )
-                                    }
-                                    asm_instructions
-                                        .push(format!("@{}", operation_args.val.unwrap()));
-                                    asm_instructions.push("D=A".to_string());
-                                    asm_instructions.push(
-                                        operation_args.segment.as_ref().unwrap().as_asm_mnemonic(),
-                                    );
-                                    asm_instructions.push("A=D+M".to_string());
-                                    asm_instructions.push("D=M".to_string());
-                                    assign_d_reg_to_stack!(asm_instructions);
-                                    incr_stack_pointer!(asm_instructions);
-                                }
-                                MemorySegment::Temp => {
-                                    if operation_args.val.is_none() {
-                                        panic!(
-                                            "Push operations on TEMP require a memory segment index"
-                                        )
-                                    }
-                                    // TEMP address range is 5..12
-                                    asm_instructions
-                                        .push(format!("@R{}", 5 + operation_args.val.unwrap()));
-                                    asm_instructions.push("D=M".to_string());
-                                    assign_d_reg_to_stack!(asm_instructions);
-                                    incr_stack_pointer!(asm_instructions);
-                                }
-                                MemorySegment::Static => {
-                                    if operation_args.val.is_none() {
-                                        panic!(
-                                            "Push operations from static require a numeric value"
-                                        )
-                                    }
-                                    asm_instructions.push(format!(
-                                        "@{}.{}",
-                                        program_name,
-                                        operation_args.val.unwrap()
-                                    ));
-                                    asm_instructions.push("D=M".to_string());
-                                    assign_d_reg_to_stack!(asm_instructions);
-                                    incr_stack_pointer!(asm_instructions);
-                                }
-                                MemorySegment::Pointer => {
-                                    if operation_args.val.is_none() {
-                                        panic!("Push from pointer requires index 0 or 1")
-                                    }
-                                    match operation_args.val.unwrap() {
-                                        0 => asm_instructions.push(format!("@THIS")),
-                                        1 => asm_instructions.push(format!("@THAT")),
-                                        _ => {
-                                            panic!("Pop operations on pointer allow values 0 or 1")
-                                        }
-                                    }
-                                    asm_instructions.push("D=M".to_string());
-                                    assign_d_reg_to_stack!(asm_instructions);
-                                    incr_stack_pointer!(asm_instructions);
-                                }
-                            }
-                        }
-                        None => panic!("Memory Segment is mandatory for push operations"),
-                    };
-                }
-                Operation::Pop => {
-                    match &operation_args.segment {
-                        Some(mem_segment) => {
-                            match mem_segment {
-                                MemorySegment::Local
-                                | MemorySegment::Argument
-                                | MemorySegment::This
-                                | MemorySegment::That => {
-                                    address_top_stack!(asm_instructions);
-                                    asm_instructions.push("D=M".to_string());
-                                    asm_instructions.push("@R13".to_string());
-                                    asm_instructions.push("M=D".to_string());
-
-                                    if operation_args.val.is_none() {
-                                        panic!("Pop operations require a memory segment index")
-                                    }
-
-                                    asm_instructions
-                                        .push(format!("@{}", operation_args.val.unwrap()));
-                                    asm_instructions.push("D=A".to_string());
-                                    asm_instructions.push(
-                                        operation_args.segment.as_ref().unwrap().as_asm_mnemonic(),
-                                    );
-                                    asm_instructions.push("A=D+M".to_string());
-                                    asm_instructions.push("D=A".to_string());
-                                    asm_instructions.push("@R14".to_string());
-                                    asm_instructions.push("M=D".to_string());
-                                    asm_instructions.push("@R13".to_string());
-                                    asm_instructions.push("D=M".to_string());
-                                    asm_instructions.push("@R14".to_string());
-                                    asm_instructions.push("A=M".to_string());
-                                    asm_instructions.push("M=D".to_string());
-                                }
-                                MemorySegment::Temp => {
-                                    address_top_stack!(asm_instructions);
-                                    asm_instructions.push("D=M".to_string());
-                                    if operation_args.val.is_none() {
-                                        panic!("Pop operations require a memory segment index")
-                                    }
-                                    // TEMP address range is 5..12
-                                    asm_instructions
-                                        .push(format!("@R{}", 5 + operation_args.val.unwrap()));
-                                    asm_instructions.push("M=D".to_string());
-                                }
-                                MemorySegment::Static => {
-                                    address_top_stack!(asm_instructions);
-                                    asm_instructions.push("D=M".to_string());
-                                    if operation_args.val.is_none() {
-                                        panic!("Pop operations on static require a numeric value")
-                                    }
-                                    asm_instructions.push(format!(
-                                        "@{}.{}",
-                                        program_name,
-                                        operation_args.val.unwrap()
-                                    ));
-                                    asm_instructions.push("M=D".to_string());
-                                }
-                                MemorySegment::Pointer => {
-                                    address_top_stack!(asm_instructions);
-                                    asm_instructions.push("D=M".to_string());
-                                    if operation_args.val.is_none() {
-                                        panic!("Pop operations on static require a numeric value")
-                                    }
-                                    match operation_args.val.unwrap() {
-                                        0 => asm_instructions.push(format!("@THIS")),
-                                        1 => asm_instructions.push(format!("@THAT")),
-                                        _ => {
-                                            panic!("Pop operations on pointer allow values 0 or 1")
-                                        }
-                                    }
-                                    asm_instructions.push("M=D".to_string());
-                                }
-                                MemorySegment::Constant => panic!("Cannot pop from Constant"),
-                            }
-                        }
-                        None => panic!("Memory Segment is mandatory for pop operations"),
-                    }
-                }
-                Operation::Add | Operation::Sub | Operation::And | Operation::Or => {
-                    address_top_stack!(asm_instructions);
-                    asm_instructions.push("D=M".to_string());
-                    address_top_stack!(asm_instructions);
-                    match operation_args.op {
-                        Operation::Add => asm_instructions.push("M=D+M".to_string()),
-                        Operation::Sub => asm_instructions.push("M=M-D".to_string()),
-                        Operation::And => asm_instructions.push("M=D&M".to_string()),
-                        Operation::Or => asm_instructions.push("M=D|M".to_string()),
-                        _ => (),
-                    }
-                    decr_stack_pointer!(asm_instructions);
-                }
-                Operation::Neg => {
-                    address_top_stack!(asm_instructions);
-                    asm_instructions.push("M=-M".to_string());
-                }
-                Operation::Not => {
-                    address_top_stack!(asm_instructions);
-                    asm_instructions.push("M=!M".to_string());
-                }
-                Operation::Eq | Operation::Gt | Operation::Lt => {
-                    address_top_stack!(asm_instructions);
-                    asm_instructions.push("D=M".to_string());
-                    address_top_stack!(asm_instructions);
-                    asm_instructions.push("D=M-D".to_string());
-                    asm_instructions.push("@PUSH_TRUE".to_string());
-
-                    match operation_args.op {
-                        Operation::Eq => asm_instructions.push("D;JEQ".to_string()),
-                        Operation::Lt => asm_instructions.push("D;JLT".to_string()),
-                        Operation::Gt => asm_instructions.push("D;JGT".to_string()),
-                        _ => {}
-                    }
-
-                    asm_instructions.push("(PUSH_FALSE)".to_string());
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=0".to_string());
-                    asm_instructions.push("@NO_OP".to_string());
-                    asm_instructions.push("0;JMP".to_string());
-
-                    asm_instructions.push("(PUSH_TRUE)".to_string());
-                    asm_instructions.push("@SP".to_string());
-                    asm_instructions.push("A=M".to_string());
-                    asm_instructions.push("M=-1".to_string());
-
-                    asm_instructions.push("(NO_OP)".to_string());
-                    incr_stack_pointer!(asm_instructions);
-                }
-            }
+            generate_operation_asm(operation_args, &mut asm_instructions, program_name);
         }
     }
 
