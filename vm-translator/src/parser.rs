@@ -1,10 +1,7 @@
 pub mod branching;
 pub mod function;
 pub mod operation;
-use crate::parser::{
-    branching::BranchingArgs,
-    operation::{MemorySegment, Operation, OperationArgs},
-};
+use crate::parser::{branching::BranchingArgs, operation::OperationArgs};
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
@@ -14,26 +11,17 @@ pub enum Command {
 }
 
 pub fn parse(vm_command: &str) -> Command {
-    let vm_tokens: Vec<&str> = vm_command.split(' ').collect();
-
-    match vm_tokens[0] {
-        "label" | "goto" | "if-goto" => Command::Branching(BranchingArgs {
-            cmd: vm_tokens[0].try_into().unwrap(),
-            label: vm_tokens[1].to_string(),
-        }),
+    match vm_command
+        .split(' ')
+        .collect::<Vec<&str>>()
+        .first()
+        .unwrap()
+        .as_ref()
+    {
+        "label" | "goto" | "if-goto" => Command::Branching(vm_command.try_into().unwrap()),
         "function" | "call" | "return" => Command::Function,
         "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
-            let op = Operation::try_from(vm_tokens[0]).unwrap();
-
-            let (segment, val) = match op {
-                Operation::Push | Operation::Pop => (
-                    Some(MemorySegment::try_from(vm_tokens[1]).unwrap()),
-                    Some(vm_tokens[2].parse::<i16>().unwrap()),
-                ),
-                _ => (None, None),
-            };
-
-            Command::Operation(OperationArgs { op, segment, val })
+            Command::Operation(vm_command.try_into().unwrap())
         }
         _ => panic!(""),
     }
@@ -41,18 +29,12 @@ pub fn parse(vm_command: &str) -> Command {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use super::*;
+    use crate::parser::operation::MemorySegment;
 
     #[test]
     fn test_stack_push() {
-        let expected = Command::Operation(OperationArgs {
-            op: Operation::Push,
-            segment: Some(MemorySegment::Constant),
-            val: Some(1),
-        });
-
+        let expected = Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1));
         assert_eq!(expected, parse("push constant 1"))
     }
 
@@ -66,21 +48,9 @@ mod tests {
             .collect();
 
         let expected = vec![
-            Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            Command::Operation(OperationArgs {
-                op: Operation::Add,
-                segment: None,
-                val: None,
-            }),
+            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Add),
         ];
 
         assert_eq!(expected, commands);
@@ -88,37 +58,19 @@ mod tests {
 
     #[test]
     fn define_label() {
-        let vm_program: &str = "label SomeLabel";
-
-        let expected_command = Command::Branching(BranchingArgs {
-            cmd: branching::BranchingCommand::Label,
-            label: "SomeLabel".to_string(),
-        });
-
-        assert_eq!(expected_command, parse(vm_program));
+        let expected_command = Command::Branching(BranchingArgs::Label("SomeLabel".to_string()));
+        assert_eq!(expected_command, parse("label SomeLabel"));
     }
 
     #[test]
     fn goto_label() {
-        let vm_program: &str = "goto SomeLabel";
-
-        let expected_command = Command::Branching(BranchingArgs {
-            cmd: branching::BranchingCommand::Goto,
-            label: "SomeLabel".to_string(),
-        });
-
-        assert_eq!(expected_command, parse(vm_program));
+        let expected_command = Command::Branching(BranchingArgs::Goto("SomeLabel".to_string()));
+        assert_eq!(expected_command, parse("goto SomeLabel"));
     }
 
     #[test]
     fn if_goto_label() {
-        let vm_program: &str = "if-goto SomeLabel";
-
-        let expected_command = Command::Branching(BranchingArgs {
-            cmd: branching::BranchingCommand::IfGoto,
-            label: "SomeLabel".to_string(),
-        });
-
-        assert_eq!(expected_command, parse(vm_program));
+        let expected_command = Command::Branching(BranchingArgs::IfGoto("SomeLabel".to_string()));
+        assert_eq!(expected_command, parse("if-goto SomeLabel"));
     }
 }

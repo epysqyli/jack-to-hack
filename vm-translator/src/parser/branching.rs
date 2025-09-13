@@ -1,24 +1,22 @@
 #[derive(Debug, PartialEq, Clone)]
-pub struct BranchingArgs {
-    pub cmd: BranchingCommand,
-    pub label: String,
+pub enum BranchingArgs {
+    Label(String),
+    Goto(String),
+    IfGoto(String),
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum BranchingCommand {
-    Label,
-    Goto,
-    IfGoto,
-}
-
-impl TryFrom<&str> for BranchingCommand {
+impl TryFrom<&str> for BranchingArgs {
     type Error = &'static str;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "label" => Ok(BranchingCommand::Label),
-            "goto" => Ok(BranchingCommand::Goto),
-            "if-goto" => Ok(BranchingCommand::IfGoto),
+        let cmd_and_label: Vec<&str> = value.split(' ').collect();
+        let cmd = cmd_and_label[0];
+        let label = cmd_and_label[1];
+
+        match cmd {
+            "label" => Ok(BranchingArgs::Label(label.to_string())),
+            "goto" => Ok(BranchingArgs::Goto(label.to_string())),
+            "if-goto" => Ok(BranchingArgs::IfGoto(label.to_string())),
             _ => Err("Cannot parse vm operation"),
         }
     }

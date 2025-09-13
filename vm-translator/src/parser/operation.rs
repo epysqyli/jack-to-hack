@@ -1,14 +1,7 @@
 #[derive(Debug, PartialEq)]
-pub struct OperationArgs {
-    pub op: Operation,
-    pub segment: Option<MemorySegment>,
-    pub val: Option<i16>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Operation {
-    Push,
-    Pop,
+pub enum OperationArgs {
+    Push(MemorySegment, i16),
+    Pop(MemorySegment, i16),
     Add,
     Sub,
     Neg,
@@ -20,22 +13,30 @@ pub enum Operation {
     Not,
 }
 
-impl TryFrom<&str> for Operation {
+impl TryFrom<&str> for OperationArgs {
     type Error = &'static str;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "push" => Ok(Operation::Push),
-            "pop" => Ok(Operation::Pop),
-            "add" => Ok(Operation::Add),
-            "sub" => Ok(Operation::Sub),
-            "neg" => Ok(Operation::Neg),
-            "gt" => Ok(Operation::Gt),
-            "lt" => Ok(Operation::Lt),
-            "eq" => Ok(Operation::Eq),
-            "and" => Ok(Operation::And),
-            "or" => Ok(Operation::Or),
-            "not" => Ok(Operation::Not),
+        let vm_tokens: Vec<&str> = value.split(' ').collect();
+
+        match vm_tokens[0] {
+            "push" => Ok(OperationArgs::Push(
+                vm_tokens[1].try_into().unwrap(),
+                vm_tokens[2].parse::<i16>().unwrap(),
+            )),
+            "pop" => Ok(OperationArgs::Pop(
+                vm_tokens[1].try_into().unwrap(),
+                vm_tokens[2].parse::<i16>().unwrap(),
+            )),
+            "add" => Ok(OperationArgs::Add),
+            "sub" => Ok(OperationArgs::Sub),
+            "neg" => Ok(OperationArgs::Neg),
+            "gt" => Ok(OperationArgs::Gt),
+            "lt" => Ok(OperationArgs::Lt),
+            "eq" => Ok(OperationArgs::Eq),
+            "and" => Ok(OperationArgs::And),
+            "or" => Ok(OperationArgs::Or),
+            "not" => Ok(OperationArgs::Not),
             _ => Err("Cannot parse vm operation"),
         }
     }

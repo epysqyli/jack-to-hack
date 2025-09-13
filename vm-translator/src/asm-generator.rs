@@ -1,5 +1,5 @@
 use crate::parser::Command;
-use crate::parser::branching::{BranchingArgs, BranchingCommand};
+use crate::parser::branching::BranchingArgs;
 use crate::parser::operation::*;
 
 macro_rules! address_top_stack {
@@ -26,18 +26,18 @@ macro_rules! incr_stack_pointer {
 }
 
 fn generate_branching_asm(branching_args: &BranchingArgs, asm_instructions: &mut Vec<String>) {
-    match branching_args.cmd {
-        BranchingCommand::Label => {
-            asm_instructions.push(format!("({})", branching_args.label));
+    match branching_args {
+        BranchingArgs::Label(label) => {
+            asm_instructions.push(format!("({})", label));
         }
-        BranchingCommand::Goto => {
-            asm_instructions.push(format!("@{}", branching_args.label));
+        BranchingArgs::Goto(label) => {
+            asm_instructions.push(format!("@{}", label));
             asm_instructions.push("0;JMP".to_string());
         }
-        BranchingCommand::IfGoto => {
+        BranchingArgs::IfGoto(label) => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("D=M".to_string());
-            asm_instructions.push(format!("@{}", branching_args.label));
+            asm_instructions.push(format!("@{}", label));
             asm_instructions.push("D;JNE".to_string());
         }
     }
@@ -48,188 +48,140 @@ fn generate_operation_asm(
     asm_instructions: &mut Vec<String>,
     program_name: &str,
 ) {
-    match operation_args.op {
-        Operation::Push => {
-            match &operation_args.segment {
-                Some(mem_segment) => {
-                    match mem_segment {
-                        MemorySegment::Constant => {
-                            if operation_args.val.is_none() {
-                                panic!("Push operations require a value to push on the stack")
-                            }
-                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
-                            asm_instructions.push("D=A".to_string());
-                            assign_d_reg_to_stack!(asm_instructions);
-                            incr_stack_pointer!(asm_instructions);
-                        }
-                        MemorySegment::Local
-                        | MemorySegment::Argument
-                        | MemorySegment::This
-                        | MemorySegment::That => {
-                            if operation_args.val.is_none() {
-                                panic!("Push operations from memory segments require an index")
-                            }
-                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
-                            asm_instructions.push("D=A".to_string());
-                            asm_instructions
-                                .push(operation_args.segment.as_ref().unwrap().as_asm_mnemonic());
-                            asm_instructions.push("A=D+M".to_string());
-                            asm_instructions.push("D=M".to_string());
-                            assign_d_reg_to_stack!(asm_instructions);
-                            incr_stack_pointer!(asm_instructions);
-                        }
-                        MemorySegment::Temp => {
-                            if operation_args.val.is_none() {
-                                panic!("Push operations on TEMP require a memory segment index")
-                            }
-                            // TEMP address range is 5..12
-                            asm_instructions.push(format!("@R{}", 5 + operation_args.val.unwrap()));
-                            asm_instructions.push("D=M".to_string());
-                            assign_d_reg_to_stack!(asm_instructions);
-                            incr_stack_pointer!(asm_instructions);
-                        }
-                        MemorySegment::Static => {
-                            if operation_args.val.is_none() {
-                                panic!("Push operations from static require a numeric value")
-                            }
-                            asm_instructions.push(format!(
-                                "@{}.{}",
-                                program_name,
-                                operation_args.val.unwrap()
-                            ));
-                            asm_instructions.push("D=M".to_string());
-                            assign_d_reg_to_stack!(asm_instructions);
-                            incr_stack_pointer!(asm_instructions);
-                        }
-                        MemorySegment::Pointer => {
-                            if operation_args.val.is_none() {
-                                panic!("Push from pointer requires index 0 or 1")
-                            }
-                            match operation_args.val.unwrap() {
-                                0 => asm_instructions.push(format!("@THIS")),
-                                1 => asm_instructions.push(format!("@THAT")),
-                                _ => {
-                                    panic!("Pop operations on pointer allow values 0 or 1")
-                                }
-                            }
-                            asm_instructions.push("D=M".to_string());
-                            assign_d_reg_to_stack!(asm_instructions);
-                            incr_stack_pointer!(asm_instructions);
+    match operation_args {
+        OperationArgs::Push(mem_segment, val) => {
+            match mem_segment {
+                MemorySegment::Constant => {
+                    asm_instructions.push(format!("@{}", val));
+                    asm_instructions.push("D=A".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
+                    incr_stack_pointer!(asm_instructions);
+                }
+                MemorySegment::Local
+                | MemorySegment::Argument
+                | MemorySegment::This
+                | MemorySegment::That => {
+                    asm_instructions.push(format!("@{}", val));
+                    asm_instructions.push("D=A".to_string());
+                    asm_instructions.push(mem_segment.as_asm_mnemonic());
+                    asm_instructions.push("A=D+M".to_string());
+                    asm_instructions.push("D=M".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
+                    incr_stack_pointer!(asm_instructions);
+                }
+                MemorySegment::Temp => {
+                    // TEMP address range is 5..12
+                    asm_instructions.push(format!("@R{}", 5 + val));
+                    asm_instructions.push("D=M".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
+                    incr_stack_pointer!(asm_instructions);
+                }
+                MemorySegment::Static => {
+                    asm_instructions.push(format!("@{}.{}", program_name, val));
+                    asm_instructions.push("D=M".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
+                    incr_stack_pointer!(asm_instructions);
+                }
+                MemorySegment::Pointer => {
+                    match val {
+                        0 => asm_instructions.push(format!("@THIS")),
+                        1 => asm_instructions.push(format!("@THAT")),
+                        _ => {
+                            panic!("Pop operations on pointer allow values 0 or 1")
                         }
                     }
+                    asm_instructions.push("D=M".to_string());
+                    assign_d_reg_to_stack!(asm_instructions);
+                    incr_stack_pointer!(asm_instructions);
                 }
-                None => panic!("Memory Segment is mandatory for push operations"),
             };
         }
-        Operation::Pop => {
-            match &operation_args.segment {
-                Some(mem_segment) => {
-                    match mem_segment {
-                        MemorySegment::Local
-                        | MemorySegment::Argument
-                        | MemorySegment::This
-                        | MemorySegment::That => {
-                            address_top_stack!(asm_instructions);
-                            asm_instructions.push("D=M".to_string());
-                            asm_instructions.push("@R13".to_string());
-                            asm_instructions.push("M=D".to_string());
+        OperationArgs::Pop(mem_segment, val) => {
+            match mem_segment {
+                MemorySegment::Local
+                | MemorySegment::Argument
+                | MemorySegment::This
+                | MemorySegment::That => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    asm_instructions.push("@R13".to_string());
+                    asm_instructions.push("M=D".to_string());
 
-                            if operation_args.val.is_none() {
-                                panic!("Pop operations require a memory segment index")
-                            }
-
-                            asm_instructions.push(format!("@{}", operation_args.val.unwrap()));
-                            asm_instructions.push("D=A".to_string());
-                            asm_instructions
-                                .push(operation_args.segment.as_ref().unwrap().as_asm_mnemonic());
-                            asm_instructions.push("A=D+M".to_string());
-                            asm_instructions.push("D=A".to_string());
-                            asm_instructions.push("@R14".to_string());
-                            asm_instructions.push("M=D".to_string());
-                            asm_instructions.push("@R13".to_string());
-                            asm_instructions.push("D=M".to_string());
-                            asm_instructions.push("@R14".to_string());
-                            asm_instructions.push("A=M".to_string());
-                            asm_instructions.push("M=D".to_string());
-                        }
-                        MemorySegment::Temp => {
-                            address_top_stack!(asm_instructions);
-                            asm_instructions.push("D=M".to_string());
-                            if operation_args.val.is_none() {
-                                panic!("Pop operations require a memory segment index")
-                            }
-                            // TEMP address range is 5..12
-                            asm_instructions.push(format!("@R{}", 5 + operation_args.val.unwrap()));
-                            asm_instructions.push("M=D".to_string());
-                        }
-                        MemorySegment::Static => {
-                            address_top_stack!(asm_instructions);
-                            asm_instructions.push("D=M".to_string());
-                            if operation_args.val.is_none() {
-                                panic!("Pop operations on static require a numeric value")
-                            }
-                            asm_instructions.push(format!(
-                                "@{}.{}",
-                                program_name,
-                                operation_args.val.unwrap()
-                            ));
-                            asm_instructions.push("M=D".to_string());
-                        }
-                        MemorySegment::Pointer => {
-                            address_top_stack!(asm_instructions);
-                            asm_instructions.push("D=M".to_string());
-                            if operation_args.val.is_none() {
-                                panic!("Pop operations on static require a numeric value")
-                            }
-                            match operation_args.val.unwrap() {
-                                0 => asm_instructions.push(format!("@THIS")),
-                                1 => asm_instructions.push(format!("@THAT")),
-                                _ => {
-                                    panic!("Pop operations on pointer allow values 0 or 1")
-                                }
-                            }
-                            asm_instructions.push("M=D".to_string());
-                        }
-                        MemorySegment::Constant => panic!("Cannot pop from Constant"),
-                    }
+                    asm_instructions.push(format!("@{}", val));
+                    asm_instructions.push("D=A".to_string());
+                    asm_instructions.push(mem_segment.as_asm_mnemonic());
+                    asm_instructions.push("A=D+M".to_string());
+                    asm_instructions.push("D=A".to_string());
+                    asm_instructions.push("@R14".to_string());
+                    asm_instructions.push("M=D".to_string());
+                    asm_instructions.push("@R13".to_string());
+                    asm_instructions.push("D=M".to_string());
+                    asm_instructions.push("@R14".to_string());
+                    asm_instructions.push("A=M".to_string());
+                    asm_instructions.push("M=D".to_string());
                 }
-                None => panic!("Memory Segment is mandatory for pop operations"),
+                MemorySegment::Temp => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    // TEMP address range is 5..12
+                    asm_instructions.push(format!("@R{}", 5 + val));
+                    asm_instructions.push("M=D".to_string());
+                }
+                MemorySegment::Static => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    asm_instructions.push(format!("@{}.{}", program_name, val));
+                    asm_instructions.push("M=D".to_string());
+                }
+                MemorySegment::Pointer => {
+                    address_top_stack!(asm_instructions);
+                    asm_instructions.push("D=M".to_string());
+                    match val {
+                        0 => asm_instructions.push(format!("@THIS")),
+                        1 => asm_instructions.push(format!("@THAT")),
+                        _ => {
+                            panic!("Pop operations on pointer allow values 0 or 1")
+                        }
+                    }
+                    asm_instructions.push("M=D".to_string());
+                }
+                MemorySegment::Constant => panic!("Cannot pop from Constant"),
             }
         }
-        Operation::Add | Operation::Sub | Operation::And | Operation::Or => {
+        OperationArgs::Add | OperationArgs::Sub | OperationArgs::And | OperationArgs::Or => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("D=M".to_string());
             address_top_stack!(asm_instructions);
-            match operation_args.op {
-                Operation::Add => asm_instructions.push("M=D+M".to_string()),
-                Operation::Sub => asm_instructions.push("M=M-D".to_string()),
-                Operation::And => asm_instructions.push("M=D&M".to_string()),
-                Operation::Or => asm_instructions.push("M=D|M".to_string()),
+            match operation_args {
+                OperationArgs::Add => asm_instructions.push("M=D+M".to_string()),
+                OperationArgs::Sub => asm_instructions.push("M=M-D".to_string()),
+                OperationArgs::And => asm_instructions.push("M=D&M".to_string()),
+                OperationArgs::Or => asm_instructions.push("M=D|M".to_string()),
                 _ => (),
             }
             incr_stack_pointer!(asm_instructions);
         }
-        Operation::Neg => {
+        OperationArgs::Neg => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=-M".to_string());
             incr_stack_pointer!(asm_instructions);
         }
-        Operation::Not => {
+        OperationArgs::Not => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=!M".to_string());
             incr_stack_pointer!(asm_instructions);
         }
-        Operation::Eq | Operation::Gt | Operation::Lt => {
+        OperationArgs::Eq | OperationArgs::Gt | OperationArgs::Lt => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("D=M".to_string());
             address_top_stack!(asm_instructions);
             asm_instructions.push("D=M-D".to_string());
             asm_instructions.push("@PUSH_TRUE".to_string());
 
-            match operation_args.op {
-                Operation::Eq => asm_instructions.push("D;JEQ".to_string()),
-                Operation::Lt => asm_instructions.push("D;JLT".to_string()),
-                Operation::Gt => asm_instructions.push("D;JGT".to_string()),
+            match operation_args {
+                OperationArgs::Eq => asm_instructions.push("D;JEQ".to_string()),
+                OperationArgs::Lt => asm_instructions.push("D;JLT".to_string()),
+                OperationArgs::Gt => asm_instructions.push("D;JGT".to_string()),
                 _ => {}
             }
 
@@ -270,34 +222,18 @@ pub fn generate_asm(vm_command: &Command, program_name: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::branching::BranchingArgs;
 
     const TEST_PROGRAM_NAME: &'static str = "TestProgram";
 
     #[test]
     fn stack_push() {
-        let vm_command: Command = Command::Operation(OperationArgs {
-            op: Operation::Push,
-            segment: Some(MemorySegment::Constant),
-            val: Some(1),
-        });
+        let vm_command: Command =
+            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1));
 
         assert_eq!(
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             generate_asm(&vm_command, TEST_PROGRAM_NAME)
         );
-    }
-
-    #[test]
-    #[should_panic]
-    fn push_without_value_panics() {
-        let vm_command: Command = Command::Operation(OperationArgs {
-            op: Operation::Push,
-            segment: Some(MemorySegment::Constant),
-            val: None,
-        });
-
-        generate_asm(&vm_command, TEST_PROGRAM_NAME);
     }
 
     fn assert_commands_eq(vm_commands: Vec<&Command>, expected_asm: Vec<Vec<&str>>) {
@@ -312,27 +248,17 @@ mod tests {
     #[test]
     fn stack_double_push_and_add() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Add,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Add),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
+            ],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -341,29 +267,17 @@ mod tests {
     #[test]
     fn stack_double_push_and_sub() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Sub,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Sub),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
-            // start from stack[0], assign D to M, incr stack
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            // start from stack[1], assign D to M, incr stack
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1",
+            ],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -372,21 +286,9 @@ mod tests {
     #[test]
     fn stack_double_push_and_logical_and() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::And,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::And),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -403,21 +305,9 @@ mod tests {
     #[test]
     fn stack_double_push_and_logical_or() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Or,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Or),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -434,16 +324,8 @@ mod tests {
     #[test]
     fn single_stack_push_and_neg() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Neg,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Neg),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -457,16 +339,8 @@ mod tests {
     #[test]
     fn single_stack_push_and_not() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Not,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Not),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -480,21 +354,9 @@ mod tests {
     #[test]
     fn stack_double_push_and_eq() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Eq,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Eq),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -533,21 +395,9 @@ mod tests {
     #[test]
     fn stack_double_push_and_lt() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Lt,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Lt),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -586,21 +436,9 @@ mod tests {
     #[test]
     fn stack_double_push_and_gt() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Gt,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            &Command::Operation(OperationArgs::Gt),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -639,31 +477,11 @@ mod tests {
     #[test]
     fn push_twice_add_push_and_sub() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(5),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(5),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Add,
-                segment: None,
-                val: None,
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(10),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Sub,
-                segment: None,
-                val: None,
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            &Command::Operation(OperationArgs::Add),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 10)),
+            &Command::Operation(OperationArgs::Sub),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -683,11 +501,7 @@ mod tests {
 
     #[test]
     fn push_to_stack_and_pop_from_stack_to_memory_segment() {
-        let push_cmd = Command::Operation(OperationArgs {
-            op: Operation::Push,
-            segment: Some(MemorySegment::Constant),
-            val: Some(1),
-        });
+        let push_cmd = Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1));
 
         let memory_segments = [
             MemorySegment::Local,
@@ -701,11 +515,7 @@ mod tests {
             assert_commands_eq(
                 vec![
                     &push_cmd,
-                    &Command::Operation(OperationArgs {
-                        op: Operation::Pop,
-                        segment: Some(memory_segment),
-                        val: Some(5),
-                    }),
+                    &Command::Operation(OperationArgs::Pop(memory_segment, 5)),
                 ],
                 vec![
                     vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
@@ -737,21 +547,9 @@ mod tests {
     #[test]
     fn push_to_stack_pop_to_local_and_back_to_stack() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(5),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Pop,
-                segment: Some(MemorySegment::Local),
-                val: Some(2),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Local),
-                val: Some(2),
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            &Command::Operation(OperationArgs::Pop(MemorySegment::Local, 2)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Local, 2)),
         ];
 
         let expected_asm = vec![
@@ -771,21 +569,9 @@ mod tests {
     #[test]
     fn push_to_stack_pop_to_temp_and_push_from_temp_to_stack() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(3),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Pop,
-                segment: Some(MemorySegment::Temp),
-                val: Some(4),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Temp),
-                val: Some(4),
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 3)),
+            &Command::Operation(OperationArgs::Pop(MemorySegment::Temp, 4)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Temp, 4)),
         ];
 
         let expected_asm = vec![
@@ -803,21 +589,9 @@ mod tests {
     #[test]
     fn push_to_stack_and_pop_to_static_and_push_back_to_stack() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(5),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Pop,
-                segment: Some(MemorySegment::Static),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Static),
-                val: Some(1),
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            &Command::Operation(OperationArgs::Pop(MemorySegment::Static, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Static, 1)),
         ];
 
         let expected_asm = vec![
@@ -832,36 +606,12 @@ mod tests {
     #[test]
     fn push_to_stack_and_pop_to_pointers() {
         let vm_commands: Vec<&Command> = vec![
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(5),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Constant),
-                val: Some(6),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Pop,
-                segment: Some(MemorySegment::Pointer),
-                val: Some(0),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Pop,
-                segment: Some(MemorySegment::Pointer),
-                val: Some(1),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Pointer),
-                val: Some(0),
-            }),
-            &Command::Operation(OperationArgs {
-                op: Operation::Push,
-                segment: Some(MemorySegment::Pointer),
-                val: Some(1),
-            }),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Constant, 6)),
+            &Command::Operation(OperationArgs::Pop(MemorySegment::Pointer, 0)),
+            &Command::Operation(OperationArgs::Pop(MemorySegment::Pointer, 1)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Pointer, 0)),
+            &Command::Operation(OperationArgs::Push(MemorySegment::Pointer, 1)),
         ];
 
         let expected_asm = vec![
@@ -878,46 +628,25 @@ mod tests {
 
     #[test]
     fn define_and_goto_label() {
-        let label = "TEST".to_string();
-        let goto_label = "TEST".to_string();
+        let label_definition = Command::Branching(BranchingArgs::Label("TEST".to_string()));
+        let goto_label = Command::Branching(BranchingArgs::Goto("TEST".to_string()));
 
-        let vm_commands: Vec<Command> = vec![
-            Command::Branching(BranchingArgs {
-                cmd: BranchingCommand::Label,
-                label: label,
-            }),
-            Command::Branching(BranchingArgs {
-                cmd: BranchingCommand::Goto,
-                label: goto_label,
-            }),
-        ];
-
-        let expected_asm = vec![vec!["(TEST)"], vec!["@TEST", "0;JMP"]];
-
-        assert_commands_eq(vec![&vm_commands[0], &vm_commands[1]], expected_asm);
+        assert_commands_eq(
+            vec![&label_definition, &goto_label],
+            vec![vec!["(TEST)"], vec!["@TEST", "0;JMP"]],
+        );
     }
 
     #[test]
     fn define_and_if_goto_label() {
-        let label = "TEST".to_string();
-        let goto_label = "TEST".to_string();
-
-        let vm_commands: Vec<Command> = vec![
-            Command::Branching(BranchingArgs {
-                cmd: BranchingCommand::Label,
-                label: label,
-            }),
-            Command::Branching(BranchingArgs {
-                cmd: BranchingCommand::IfGoto,
-                label: goto_label,
-            }),
-        ];
+        let label_definition = Command::Branching(BranchingArgs::Label("TEST".to_string()));
+        let if_goto_label = Command::Branching(BranchingArgs::IfGoto("TEST".to_string()));
 
         let expected_asm = vec![
             vec!["(TEST)"],
             vec!["@SP", "M=M-1", "A=M", "D=M", "@TEST", "D;JNE"],
         ];
 
-        assert_commands_eq(vec![&vm_commands[0], &vm_commands[1]], expected_asm);
+        assert_commands_eq(vec![&label_definition, &if_goto_label], expected_asm);
     }
 }
