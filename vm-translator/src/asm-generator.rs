@@ -207,14 +207,17 @@ fn generate_operation_asm(
                 Operation::Or => asm_instructions.push("M=D|M".to_string()),
                 _ => (),
             }
+            incr_stack_pointer!(asm_instructions);
         }
         Operation::Neg => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=-M".to_string());
+            incr_stack_pointer!(asm_instructions);
         }
         Operation::Not => {
             address_top_stack!(asm_instructions);
             asm_instructions.push("M=!M".to_string());
+            incr_stack_pointer!(asm_instructions);
         }
         Operation::Eq | Operation::Gt | Operation::Lt => {
             address_top_stack!(asm_instructions);
@@ -329,7 +332,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -360,7 +363,7 @@ mod tests {
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             // start from stack[1], assign D to M, incr stack
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -389,7 +392,9 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M+1",
+            ],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -418,7 +423,9 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M+1",
+            ],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -441,7 +448,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=-M"],
+            vec!["@SP", "M=M-1", "A=M", "M=-M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -464,7 +471,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=!M"],
+            vec!["@SP", "M=M-1", "A=M", "M=!M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -623,6 +630,51 @@ mod tests {
                 "(NO_OP)",
                 "@SP",
                 "M=M+1",
+            ],
+        ];
+
+        assert_commands_eq(vm_commands, expected_asm);
+    }
+
+    #[test]
+    fn push_twice_add_push_and_sub() {
+        let vm_commands: Vec<&Command> = vec![
+            &Command::Operation(OperationArgs {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(5),
+            }),
+            &Command::Operation(OperationArgs {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(5),
+            }),
+            &Command::Operation(OperationArgs {
+                op: Operation::Add,
+                segment: None,
+                val: None,
+            }),
+            &Command::Operation(OperationArgs {
+                op: Operation::Push,
+                segment: Some(MemorySegment::Constant),
+                val: Some(10),
+            }),
+            &Command::Operation(OperationArgs {
+                op: Operation::Sub,
+                segment: None,
+                val: None,
+            }),
+        ];
+
+        let expected_asm: Vec<Vec<&str>> = vec![
+            vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
+            ],
+            vec!["@10", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec![
+                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1",
             ],
         ];
 
