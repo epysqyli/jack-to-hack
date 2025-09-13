@@ -1,12 +1,12 @@
 pub mod branching;
 pub mod function;
 pub mod operation;
-use crate::parser::{branching::BranchingArgs, operation::OperationArgs};
+use crate::parser::{branching::BranchingArgs, function::FunctionArgs, operation::OperationArgs};
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
     Branching(BranchingArgs),
-    Function, // TODO: add underlying type
+    Function(FunctionArgs),
     Operation(OperationArgs),
 }
 
@@ -19,18 +19,18 @@ pub fn parse(vm_command: &str) -> Command {
         .as_ref()
     {
         "label" | "goto" | "if-goto" => Command::Branching(vm_command.try_into().unwrap()),
-        "function" | "call" | "return" => Command::Function,
+        "function" | "call" | "return" => Command::Function(vm_command.try_into().unwrap()),
         "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
             Command::Operation(vm_command.try_into().unwrap())
         }
-        _ => panic!(""),
+        _ => panic!("Vm command cannot be parsed"),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::operation::MemorySegment;
+    use crate::parser::{function::FunctionArgs, operation::MemorySegment};
 
     #[test]
     fn test_stack_push() {
@@ -72,5 +72,23 @@ mod tests {
     fn if_goto_label() {
         let expected_command = Command::Branching(BranchingArgs::IfGoto("SomeLabel".to_string()));
         assert_eq!(expected_command, parse("if-goto SomeLabel"));
+    }
+
+    #[test]
+    fn define_function() {
+        let expected_command = Command::Function(FunctionArgs::Function("TestFunc".to_string(), 2));
+        assert_eq!(expected_command, parse("function TestFunc 2"));
+    }
+
+    #[test]
+    fn call_function() {
+        let expected_command = Command::Function(FunctionArgs::Call("TestFunc".to_string(), 2));
+        assert_eq!(expected_command, parse("call TestFunc 2"));
+    }
+
+    #[test]
+    fn return_from_function() {
+        let expected_command = Command::Function(FunctionArgs::Return);
+        assert_eq!(expected_command, parse("return"));
     }
 }
