@@ -71,21 +71,13 @@ fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_nam
             asm.push("D=A".to_string());
             push_d_reg_to_stack!(asm);
 
-            asm.push("@LCL".to_string());
-            asm.push("D=M".to_string());
-            push_d_reg_to_stack!(asm);
-
-            asm.push("@ARG".to_string());
-            asm.push("D=M".to_string());
-            push_d_reg_to_stack!(asm);
-
-            asm.push("@THIS".to_string());
-            asm.push("D=M".to_string());
-            push_d_reg_to_stack!(asm);
-
-            asm.push("@THAT".to_string());
-            asm.push("D=M".to_string());
-            push_d_reg_to_stack!(asm);
+            vec!["@LCL", "@ARG", "@THIS", "@THAT"]
+                .iter()
+                .for_each(|mem_segment| {
+                    asm.push(mem_segment.to_string());
+                    asm.push("D=M".to_string());
+                    push_d_reg_to_stack!(asm);
+                });
 
             asm.push("@SP".to_string());
             asm.push("D=M".to_string());
