@@ -130,43 +130,17 @@ fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_nam
             asm.push("@SP".to_string());
             asm.push("M=D".to_string());
 
-            // restore THAT for the caller
-            asm.push("@R5".to_string());
-            asm.push("D=M".to_string());
-            asm.push("A=D-1".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@THAT".to_string());
-            asm.push("M=D".to_string());
-
-            // restore THIS for the caller
-            asm.push("@R5".to_string());
-            asm.push("D=M".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("A=D-1".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@THIS".to_string());
-            asm.push("M=D".to_string());
-
-            // restore ARG for the caller
-            asm.push("@R5".to_string());
-            asm.push("D=M".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("A=D-1".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@ARG".to_string());
-            asm.push("M=D".to_string());
-
-            // restore LCL for the caller
-            asm.push("@R5".to_string());
-            asm.push("D=M".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("D=D-1".to_string());
-            asm.push("A=D-1".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@LCL".to_string());
-            asm.push("M=D".to_string());
+            for (i, mem_segment) in vec!["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+                asm.push("@R5".to_string());
+                asm.push("D=M".to_string());
+                for _ in 1..=i {
+                    asm.push("D=D-1".to_string());
+                }
+                asm.push("A=D-1".to_string());
+                asm.push("D=M".to_string());
+                asm.push(mem_segment.to_string());
+                asm.push("M=D".to_string());
+            }
 
             // goto return address
             // TODO: implement recursive function calls
