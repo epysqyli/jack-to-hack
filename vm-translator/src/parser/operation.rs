@@ -13,10 +13,10 @@ pub enum OperationArgs {
     Not,
 }
 
-impl TryFrom<&str> for OperationArgs {
+impl TryFrom<String> for OperationArgs {
     type Error = &'static str;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let vm_tokens: Vec<&str> = value.split(' ').collect();
 
         match vm_tokens[0] {

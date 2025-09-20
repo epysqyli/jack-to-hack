@@ -33,26 +33,25 @@ macro_rules! push_d_reg_to_stack {
     };
 }
 
-fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>) {
+fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>, program_name: &str) {
     match args {
-        BranchingArgs::Label(label) => {
-            asm.push(format!("({})", label));
+        BranchingArgs::Label(label, fn_name) => {
+            asm.push(format!("({}.{}${})", program_name, fn_name, label));
         }
-        BranchingArgs::Goto(label) => {
-            asm.push(format!("@{}", label));
+        BranchingArgs::Goto(label, fn_name) => {
+            asm.push(format!("@{}.{}${}", program_name, fn_name, label));
             asm.push("0;JMP".to_string());
         }
-        BranchingArgs::IfGoto(label) => {
+        BranchingArgs::IfGoto(label, fn_name) => {
             address_top_stack!(asm);
             asm.push("D=M".to_string());
-            asm.push(format!("@{}", label));
+            asm.push(format!("@{}.{}${}", program_name, fn_name, label));
             asm.push("D;JNE".to_string());
         }
     }
 }
 
 fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_name: &str) {
-    // TODO: implement recursive function calls
     // Functions need to have the full unique name FileName.FunctionName.
     // Each Jack program will require one Main.main function, called by Sys.init.
     match args {
@@ -300,7 +299,7 @@ pub fn generate_asm(vm_command: &Command, program_name: &str) -> Vec<String> {
     let mut asm: Vec<String> = vec![];
 
     match vm_command {
-        Command::Branching(args) => generate_branching_asm(args, &mut asm),
+        Command::Branching(args) => generate_branching_asm(args, &mut asm, program_name),
         Command::Function(args) => generate_function_asm(args, &mut asm, program_name),
         Command::Operation(args) => generate_operation_asm(args, &mut asm, program_name),
     }
@@ -717,23 +716,72 @@ mod tests {
 
     #[test]
     fn define_and_goto_label() {
-        let label_definition = Command::Branching(BranchingArgs::Label("TEST".to_string()));
-        let goto_label = Command::Branching(BranchingArgs::Goto("TEST".to_string()));
+        let label_definition = Command::Branching(BranchingArgs::Label(
+            "TestLabel".to_string(),
+            "TestFunction".to_string(),
+        ));
+        let goto_label = Command::Branching(BranchingArgs::Goto(
+            "TestLabel".to_string(),
+            "TestFunction".to_string(),
+        ));
 
         assert_commands_eq(
             vec![&label_definition, &goto_label],
-            vec![vec!["(TEST)"], vec!["@TEST", "0;JMP"]],
+            vec![
+                vec!["(TestProgram.TestFunction$TestLabel)"],
+                vec!["@TestProgram.TestFunction$TestLabel", "0;JMP"],
+            ],
+        );
+    }
+
+    #[test]
+    fn identical_labels_are_different_within_different_functions() {
+        let vm_commands = vec![
+            Command::Branching(BranchingArgs::Label(
+                "Test".to_string(),
+                "FirstFunction".to_string(),
+            )),
+            Command::Branching(BranchingArgs::Label(
+                "Test".to_string(),
+                "SecondFunction".to_string(),
+            )),
+        ];
+
+        let expected_asm = vec![
+            vec!["(TestProgram.FirstFunction$Test)"],
+            vec!["(TestProgram.SecondFunction$Test)"],
+        ];
+
+        assert_commands_eq(
+            vm_commands
+                .iter()
+                .map(|vm_cmd| vm_cmd)
+                .collect::<Vec<&Command>>(),
+            expected_asm,
         );
     }
 
     #[test]
     fn define_and_if_goto_label() {
-        let label_definition = Command::Branching(BranchingArgs::Label("TEST".to_string()));
-        let if_goto_label = Command::Branching(BranchingArgs::IfGoto("TEST".to_string()));
+        let label_definition = Command::Branching(BranchingArgs::Label(
+            "TestLabel".to_string(),
+            "TestFunction".to_string(),
+        ));
+        let if_goto_label = Command::Branching(BranchingArgs::IfGoto(
+            "TestLabel".to_string(),
+            "TestFunction".to_string(),
+        ));
 
         let expected_asm = vec![
-            vec!["(TEST)"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@TEST", "D;JNE"],
+            vec!["(TestProgram.TestFunction$TestLabel)"],
+            vec![
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                "@TestProgram.TestFunction$TestLabel",
+                "D;JNE",
+            ],
         ];
 
         assert_commands_eq(vec![&label_definition, &if_goto_label], expected_asm);

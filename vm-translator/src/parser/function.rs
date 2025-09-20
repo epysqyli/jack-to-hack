@@ -5,10 +5,10 @@ pub enum FunctionArgs {
     Return,
 }
 
-impl TryFrom<&str> for FunctionArgs {
+impl TryFrom<String> for FunctionArgs {
     type Error = &'static str;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let tokens: Vec<&str> = value.split(' ').collect();
 
         match tokens[0] {
@@ -22,6 +22,15 @@ impl TryFrom<&str> for FunctionArgs {
             )),
             "return" => Ok(FunctionArgs::Return),
             _ => Err("Cannot parse vm operation"),
+        }
+    }
+}
+
+impl FunctionArgs {
+    pub fn fn_name(self: &Self) -> String {
+        match self {
+            FunctionArgs::Function(name, _) => name.to_string(),
+            _ => panic!("Trying to extract current function name from non 'function' command"),
         }
     }
 }
