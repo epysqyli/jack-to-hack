@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::parser::Command;
 use crate::parser::branching::BranchingArgs;
 use crate::parser::function::FunctionArgs;
@@ -51,9 +53,12 @@ fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>, program_n
     }
 }
 
-fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_name: &str) {
-    // Functions need to have the full unique name FileName.FunctionName.
-    // Each Jack program will require one Main.main function, called by Sys.init.
+fn generate_function_asm(
+    args: &FunctionArgs,
+    asm: &mut Vec<String>,
+    program_name: &str,
+    function_calls: &mut HashMap<String, usize>,
+) {
     match args {
         FunctionArgs::Function(fn_name, n_local_vars) => {
             asm.push(format!("({}.{})", program_name, fn_name));
@@ -66,7 +71,19 @@ fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_nam
             }
         }
         FunctionArgs::Call(fn_name, n_caller_args) => {
-            asm.push(format!("@{}.{}$ret.{}", program_name, fn_name, 0));
+            let full_fn_name = format!("{}.{}", program_name, fn_name);
+            let call_depth: usize = match function_calls.get_mut(&full_fn_name) {
+                None => {
+                    function_calls.insert(full_fn_name, 1);
+                    0
+                },
+                Some(v) => {
+                    *v += 1;
+                    *v - 1
+                },
+            };
+
+            asm.push(format!("@{}.{}$ret.{}", program_name, fn_name, call_depth));
             asm.push("D=A".to_string());
             push_d_reg_to_stack!(asm);
 
@@ -93,7 +110,7 @@ fn generate_function_asm(args: &FunctionArgs, asm: &mut Vec<String>, program_nam
             asm.push(format!("@{}.{}", program_name, fn_name));
             asm.push("0;JMP".to_string());
 
-            asm.push(format!("({}.{}$ret.{})", program_name, fn_name, 0));
+            asm.push(format!("({}.{}$ret.{})", program_name, fn_name, call_depth));
         }
         FunctionArgs::Return => {
             // frame = LCL: define frame as temp variable R5 and assign LCL to it
@@ -295,13 +312,15 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
     }
 }
 
-// TODO: handle function call iterations
 pub fn generate_asm(vm_commands: Vec<Command>, program_name: &str) -> Vec<String> {
     let mut asm: Vec<String> = vec![];
+    let mut function_calls: HashMap<String, usize> = HashMap::new();
 
     vm_commands.iter().for_each(|vm_command| match vm_command {
         Command::Branching(args) => generate_branching_asm(args, &mut asm, program_name),
-        Command::Function(args) => generate_function_asm(args, &mut asm, program_name),
+        Command::Function(args) => {
+            generate_function_asm(args, &mut asm, program_name, &mut function_calls)
+        }
         Command::Operation(args) => generate_operation_asm(args, &mut asm, program_name),
     });
 
@@ -933,10 +952,19 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "TODO"]
-    fn call_function_from_within_function() {}
+    fn recursive_function_calls_assigns_labels_properly() {
+        let vm_commands: Vec<Command> = vec![
+            Command::Function(FunctionArgs::Call("Test".to_string(), 0)),
+            Command::Function(FunctionArgs::Function("Test".to_string(), 0)),
+            Command::Function(FunctionArgs::Call("Test".to_string(), 0)),
+            Command::Function(FunctionArgs::Return),
+        ];
 
-    #[test]
-    #[ignore = "TODO"]
-    fn call_function_recursively() {}
+        let asm_commands = generate_asm(vm_commands, "TestProgram");
+
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "(TestProgram.Test$ret.0)").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "@TestProgram.Test$ret.0").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "(TestProgram.Test$ret.1)").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "@TestProgram.Test$ret.1").count() == 1);
+    }
 }
