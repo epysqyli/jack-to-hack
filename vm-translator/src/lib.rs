@@ -21,10 +21,8 @@ fn read_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
 }
 
 fn parse_vm_program(vm_program: Vec<String>, program_name: &str) -> Vec<String> {
-    let mut asm_commands: Vec<String> = parse(vm_program)
-        .iter()
-        .flat_map(|vm_command| generate_asm(vm_command, program_name))
-        .collect();
+    let vm_commands = parse(vm_program);
+    let mut asm_commands = generate_asm(vm_commands, program_name);
 
     asm_commands.push("(END)".to_string());
     asm_commands.push("@END".to_string());
