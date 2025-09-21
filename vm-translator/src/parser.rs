@@ -31,7 +31,11 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
                 current_fn = fn_args.fn_name();
                 commands.push(Command::Function(fn_args));
             }
-            "call" | "return" => {
+            "return" => {
+                current_fn = "".to_string();
+                commands.push(Command::Function(vm_command.try_into().unwrap()));
+            }
+            "call" => {
                 commands.push(Command::Function(vm_command.try_into().unwrap()));
             }
             "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
@@ -122,6 +126,8 @@ mod tests {
                 "Test".to_string(),
                 "FirstFunction".to_string(),
             )),
+            Command::Function(FunctionArgs::Return),
+            Command::Branching(BranchingArgs::Label("Test".to_string(), "".to_string())),
             Command::Function(FunctionArgs::Function("SecondFunction".to_string(), 0)),
             Command::Branching(BranchingArgs::Label(
                 "Test".to_string(),
@@ -131,6 +137,8 @@ mod tests {
 
         let actual = parse(vec![
             "function FirstFunction 0".to_string(),
+            "label Test".to_string(),
+            "return".to_string(),
             "label Test".to_string(),
             "function SecondFunction 0".to_string(),
             "label Test".to_string(),
