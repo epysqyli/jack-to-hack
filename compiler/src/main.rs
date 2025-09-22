@@ -4,6 +4,9 @@ use hack_assembler::assembler::Assembler;
 use vm_translator::{parse_vm_program_from_file, translate_vm_program_to_file};
 
 fn main() {
+    // TODO: parse either single file or multiple files within a directory
+    // and produce in both cases a single .asm program
+
     // vm -> asm -> hack
     let vm_program_path = env::args().nth(1).expect("No vm program path provided!");
     let asm_program = parse_vm_program_from_file(&vm_program_path);
