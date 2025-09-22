@@ -151,7 +151,6 @@ fn generate_function_asm(
             }
 
             // goto return address
-            // TODO: implement recursive function calls
             asm.push("@R6".to_string());
             asm.push("A=M".to_string());
             asm.push("A=M".to_string());
@@ -160,6 +159,7 @@ fn generate_function_asm(
     }
 }
 
+// TODO: should operation labels should have their names scoped by function?
 fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_name: &str) {
     match args {
         OperationArgs::Push(mem_segment, val) => {

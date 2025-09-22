@@ -32,7 +32,6 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
                 commands.push(Command::Function(fn_args));
             }
             "return" => {
-                current_fn = "".to_string();
                 commands.push(Command::Function(vm_command.try_into().unwrap()));
             }
             "call" => {
@@ -127,7 +126,6 @@ mod tests {
                 "FirstFunction".to_string(),
             )),
             Command::Function(FunctionArgs::Return),
-            Command::Branching(BranchingArgs::Label("Test".to_string(), "".to_string())),
             Command::Function(FunctionArgs::Function("SecondFunction".to_string(), 0)),
             Command::Branching(BranchingArgs::Label(
                 "Test".to_string(),
@@ -139,7 +137,6 @@ mod tests {
             "function FirstFunction 0".to_string(),
             "label Test".to_string(),
             "return".to_string(),
-            "label Test".to_string(),
             "function SecondFunction 0".to_string(),
             "label Test".to_string(),
         ]);
