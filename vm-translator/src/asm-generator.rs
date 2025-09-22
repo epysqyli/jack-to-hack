@@ -159,7 +159,6 @@ fn generate_function_asm(
     }
 }
 
-// TODO: should operation labels should have their names scoped by function?
 fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_name: &str) {
     match args {
         OperationArgs::Push(mem_segment, val) => {
@@ -280,33 +279,32 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
             asm.push("M=!M".to_string());
             incr_stack_pointer!(asm);
         }
-        OperationArgs::Eq | OperationArgs::Gt | OperationArgs::Lt => {
+        OperationArgs::Eq(fn_name) | OperationArgs::Gt(fn_name) | OperationArgs::Lt(fn_name) => {
             address_top_stack!(asm);
             asm.push("D=M".to_string());
             address_top_stack!(asm);
             asm.push("D=M-D".to_string());
-            asm.push("@PUSH_TRUE".to_string());
+            asm.push(format!("@{}.{}.PUSH_TRUE", program_name, fn_name));
 
             match args {
-                OperationArgs::Eq => asm.push("D;JEQ".to_string()),
-                OperationArgs::Lt => asm.push("D;JLT".to_string()),
-                OperationArgs::Gt => asm.push("D;JGT".to_string()),
+                OperationArgs::Eq(_) => asm.push("D;JEQ".to_string()),
+                OperationArgs::Lt(_) => asm.push("D;JLT".to_string()),
+                OperationArgs::Gt(_) => asm.push("D;JGT".to_string()),
                 _ => {}
             }
 
-            asm.push("(PUSH_FALSE)".to_string());
             asm.push("@SP".to_string());
             asm.push("A=M".to_string());
             asm.push("M=0".to_string());
-            asm.push("@NO_OP".to_string());
+            asm.push(format!("@{}.{}.NO_OP", program_name, fn_name));
             asm.push("0;JMP".to_string());
 
-            asm.push("(PUSH_TRUE)".to_string());
+            asm.push(format!("({}.{}.PUSH_TRUE)", program_name, fn_name));
             asm.push("@SP".to_string());
             asm.push("A=M".to_string());
             asm.push("M=-1".to_string());
 
-            asm.push("(NO_OP)".to_string());
+            asm.push(format!("({}.{}.NO_OP)", program_name, fn_name));
             incr_stack_pointer!(asm);
         }
     }
@@ -461,7 +459,7 @@ mod tests {
         let vm_commands: Vec<Command> = vec![
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
-            Command::Operation(OperationArgs::Eq),
+            Command::Operation(OperationArgs::Eq("TestFunction".to_string())),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -476,19 +474,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@PUSH_TRUE",
+                "@TestProgram.TestFunction.PUSH_TRUE",
                 "D;JEQ",
-                "(PUSH_FALSE)",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@NO_OP",
+                "@TestProgram.TestFunction.NO_OP",
                 "0;JMP",
-                "(PUSH_TRUE)",
+                "(TestProgram.TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(NO_OP)",
+                "(TestProgram.TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],
@@ -502,7 +499,7 @@ mod tests {
         let vm_commands: Vec<Command> = vec![
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
-            Command::Operation(OperationArgs::Lt),
+            Command::Operation(OperationArgs::Lt("TestFunction".to_string())),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -517,19 +514,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@PUSH_TRUE",
+                "@TestProgram.TestFunction.PUSH_TRUE",
                 "D;JLT",
-                "(PUSH_FALSE)",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@NO_OP",
+                "@TestProgram.TestFunction.NO_OP",
                 "0;JMP",
-                "(PUSH_TRUE)",
+                "(TestProgram.TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(NO_OP)",
+                "(TestProgram.TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],
@@ -543,7 +539,7 @@ mod tests {
         let vm_commands: Vec<Command> = vec![
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
             Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
-            Command::Operation(OperationArgs::Gt),
+            Command::Operation(OperationArgs::Gt("TestFunction".to_string())),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -558,19 +554,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@PUSH_TRUE",
+                "@TestProgram.TestFunction.PUSH_TRUE",
                 "D;JGT",
-                "(PUSH_FALSE)",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@NO_OP",
+                "@TestProgram.TestFunction.NO_OP",
                 "0;JMP",
-                "(PUSH_TRUE)",
+                "(TestProgram.TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(NO_OP)",
+                "(TestProgram.TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],

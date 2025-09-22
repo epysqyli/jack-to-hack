@@ -5,19 +5,16 @@ pub enum OperationArgs {
     Add,
     Sub,
     Neg,
-    Gt,
-    Lt,
-    Eq,
+    Gt(String),
+    Lt(String),
+    Eq(String),
     And,
     Or,
     Not,
 }
-
-impl TryFrom<String> for OperationArgs {
-    type Error = &'static str;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let vm_tokens: Vec<&str> = value.split(' ').collect();
+impl OperationArgs {
+    pub fn from(vm_command: String, fn_name: String) -> Result<Self, &'static str> {
+        let vm_tokens: Vec<&str> = vm_command.split(' ').collect();
 
         match vm_tokens[0] {
             "push" => Ok(OperationArgs::Push(
@@ -31,9 +28,9 @@ impl TryFrom<String> for OperationArgs {
             "add" => Ok(OperationArgs::Add),
             "sub" => Ok(OperationArgs::Sub),
             "neg" => Ok(OperationArgs::Neg),
-            "gt" => Ok(OperationArgs::Gt),
-            "lt" => Ok(OperationArgs::Lt),
-            "eq" => Ok(OperationArgs::Eq),
+            "gt" => Ok(OperationArgs::Gt(fn_name)),
+            "lt" => Ok(OperationArgs::Lt(fn_name)),
+            "eq" => Ok(OperationArgs::Eq(fn_name)),
             "and" => Ok(OperationArgs::And),
             "or" => Ok(OperationArgs::Or),
             "not" => Ok(OperationArgs::Not),

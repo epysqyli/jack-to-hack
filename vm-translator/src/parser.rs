@@ -38,7 +38,9 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
                 commands.push(Command::Function(vm_command.try_into().unwrap()));
             }
             "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
-                commands.push(Command::Operation(vm_command.try_into().unwrap()))
+                commands.push(Command::Operation(
+                    OperationArgs::from(vm_command, current_fn.clone()).unwrap(),
+                ))
             }
             _ => panic!("Vm command {} cannot be parsed", vm_command),
         };
