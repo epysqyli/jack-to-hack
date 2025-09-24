@@ -21,15 +21,16 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
     let mut vm_file_paths: Vec<PathBuf> = vec![];
 
     if vm_path.is_dir() {
-        match vm_path.read_dir() {
-            Ok(dir) => {
-                for entry in dir {
-                    if let Ok(dir_entry) = entry {
-                        vm_file_paths.push(dir_entry.path());
+        if let Ok(dir) = vm_path.read_dir() {
+            for entry in dir {
+                if let Ok(dir_entry) = entry {
+                    if let Some(ext) = dir_entry.path().extension() {
+                        if ext == "vm" {
+                            vm_file_paths.push(dir_entry.path());
+                        }
                     }
                 }
             }
-            Err(e) => panic!("{e}"),
         }
     } else {
         vm_file_paths.push(vm_path.to_path_buf());
