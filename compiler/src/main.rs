@@ -9,14 +9,8 @@ fn main() {
     let vm_program_pathbuf = &PathBuf::from(vm_program_path.to_string());
     let asm_program = translate_vm_from_path(vm_program_pathbuf);
 
-    let output_path = {
-        let path = vm_program_pathbuf.file_name().unwrap().to_str().unwrap();
-        if vm_program_pathbuf.is_dir() {
-            path.to_string()
-        } else {
-            path.replace(".vm", "")
-        }
-    };
+    let current_dir = env::current_dir().unwrap();
+    let output_path = format!("{}/source", current_dir.to_str().unwrap());
 
     if env::args().any(|arg| arg == "--with-asm") {
         fs::write(format!("{}.asm", output_path), asm_program.join("\n"))
