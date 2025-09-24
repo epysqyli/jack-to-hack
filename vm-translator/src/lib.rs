@@ -1,14 +1,11 @@
 use crate::{asm_generator::generate_asm, parser::parse};
-use std::{
-    fs::{File, read_to_string},
-    io::Write,
-};
+use std::{fs::read_to_string, path::PathBuf};
 
 #[path = "asm-generator.rs"]
 mod asm_generator;
 mod parser;
 
-fn read_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
+fn read_vm_program_from_path(vm_program_path: &PathBuf) -> Vec<String> {
     match read_to_string(vm_program_path) {
         Err(err) => panic!("{err}"),
         Ok(vm_program) => vm_program
@@ -20,41 +17,51 @@ fn read_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
     }
 }
 
-fn parse_vm_program(vm_program: Vec<String>, program_name: &str) -> Vec<String> {
-    let vm_commands = parse(vm_program);
-    let mut asm_commands = generate_asm(vm_commands, program_name);
+pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
+    let mut vm_file_paths: Vec<PathBuf> = vec![];
 
-    asm_commands.push("(END)".to_string());
-    asm_commands.push("@END".to_string());
-    asm_commands.push("0;JMP".to_string());
-
-    asm_commands
-}
-
-pub fn parse_vm_program_from_file(vm_program_path: &str) -> Vec<String> {
-    let vm_program_path_segments: Vec<&str> = vm_program_path.split("/").collect();
-    let vm_program_name: &str = vm_program_path_segments
-        .last()
-        .unwrap()
-        .split(".")
-        .collect::<Vec<&str>>()[0];
-
-    let vm_program = read_vm_program_from_file(vm_program_path);
-    parse_vm_program(vm_program, vm_program_name)
-}
-
-pub fn translate_vm_program_to_file(vm_program_path: &str) {
-    let asm_instructions = parse_vm_program_from_file(vm_program_path);
-
-    let mut asm_program_file = File::options()
-        .create_new(true)
-        .write(true)
-        .append(true)
-        .open(vm_program_path.replace(".vm", ".asm"))
-        .unwrap();
-
-    match writeln!(asm_program_file, "{}", asm_instructions.join("\n")) {
-        Ok(_) => {}
-        Err(err) => panic!("{err}"),
+    if vm_path.is_dir() {
+        match vm_path.read_dir() {
+            Ok(dir) => {
+                for entry in dir {
+                    if let Ok(dir_entry) = entry {
+                        vm_file_paths.push(dir_entry.path());
+                    }
+                }
+            }
+            Err(e) => panic!("{e}"),
+        }
+    } else {
+        vm_file_paths.push(vm_path.to_path_buf());
     }
+
+    // TODO: bootstrap hack machine:
+    // - set SP to 256
+    // - call Sys.init, which calls Main.main
+    let mut asm: Vec<String> = vec![];
+
+    for vm_file_path in vm_file_paths {
+        let program_name = &vm_file_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split('.')
+            .collect::<Vec<&str>>()[0];
+
+        let vm_program = read_vm_program_from_path(&vm_file_path);
+        let vm_commands = parse(vm_program);
+        let program_asm = generate_asm(vm_commands, &program_name);
+
+        program_asm
+            .into_iter()
+            .for_each(|asm_command| asm.push(asm_command));
+    }
+
+    // TODO: should this be done?
+    asm.push("(END)".to_string());
+    asm.push("@END".to_string());
+    asm.push("0;JMP".to_string());
+
+    asm
 }

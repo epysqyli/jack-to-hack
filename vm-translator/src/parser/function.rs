@@ -14,11 +14,11 @@ impl TryFrom<String> for FunctionArgs {
         match tokens[0] {
             "function" => Ok(FunctionArgs::Function(
                 tokens[1].to_string(),
-                tokens[2].parse::<u8>().unwrap(),
+                tokens[2].parse::<u8>().expect("Missing function nVars"),
             )),
             "call" => Ok(FunctionArgs::Call(
                 tokens[1].to_string(),
-                tokens[2].parse::<u8>().unwrap(),
+                tokens[2].parse::<u8>().expect("Missing call nArgs"),
             )),
             "return" => Ok(FunctionArgs::Return),
             _ => Err("Cannot parse vm operation"),

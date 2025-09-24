@@ -1,22 +1,30 @@
-use std::{env, fs};
+use std::{env, fs, path::PathBuf};
 
 use hack_assembler::assembler::Assembler;
-use vm_translator::{parse_vm_program_from_file, translate_vm_program_to_file};
+use vm_translator::translate_vm_from_path;
 
 fn main() {
-    // TODO: parse either single file or multiple files within a directory
-    // and produce in both cases a single .asm program
-
     // vm -> asm -> hack
     let vm_program_path = env::args().nth(1).expect("No vm program path provided!");
-    let asm_program = parse_vm_program_from_file(&vm_program_path);
+    let vm_program_pathbuf = &PathBuf::from(vm_program_path.to_string());
+    let asm_program = translate_vm_from_path(vm_program_pathbuf);
+
+    let output_path = {
+        let path = vm_program_pathbuf.file_name().unwrap().to_str().unwrap();
+        if vm_program_pathbuf.is_dir() {
+            path.to_string()
+        } else {
+            path.replace(".vm", "")
+        }
+    };
 
     if env::args().any(|arg| arg == "--with-asm") {
-        translate_vm_program_to_file(&vm_program_path);
+        fs::write(format!("{}.asm", output_path), asm_program.join("\n"))
+            .expect("Writing .asm output failed");
     }
 
     match Assembler::new(asm_program).compile() {
-        Ok(hack) => match fs::write(vm_program_path.replace(".vm", ".hack"), hack.join("\n")) {
+        Ok(hack) => match fs::write(format!("{}.hack", output_path), hack.join("\n")) {
             Ok(_) => {
                 let filename = vm_program_path.split("/").last().unwrap();
                 println!("{filename} compiled to hack");
