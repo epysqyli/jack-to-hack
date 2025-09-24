@@ -35,19 +35,19 @@ macro_rules! push_d_reg_to_stack {
     };
 }
 
-fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>, program_name: &str) {
+fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>) {
     match args {
         BranchingArgs::Label(label, fn_name) => {
-            asm.push(format!("({}.{}${})", program_name, fn_name, label));
+            asm.push(format!("({}${})", fn_name, label));
         }
         BranchingArgs::Goto(label, fn_name) => {
-            asm.push(format!("@{}.{}${}", program_name, fn_name, label));
+            asm.push(format!("@{}${}", fn_name, label));
             asm.push("0;JMP".to_string());
         }
         BranchingArgs::IfGoto(label, fn_name) => {
             address_top_stack!(asm);
             asm.push("D=M".to_string());
-            asm.push(format!("@{}.{}${}", program_name, fn_name, label));
+            asm.push(format!("@{}${}", fn_name, label));
             asm.push("D;JNE".to_string());
         }
     }
@@ -56,12 +56,11 @@ fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>, program_n
 fn generate_function_asm(
     args: &FunctionArgs,
     asm: &mut Vec<String>,
-    program_name: &str,
     function_calls: &mut HashMap<String, usize>,
 ) {
     match args {
         FunctionArgs::Function(fn_name, n_local_vars) => {
-            asm.push(format!("({}.{})", program_name, fn_name));
+            asm.push(format!("({})", fn_name));
             for i in 0..*n_local_vars {
                 asm.push(format!("@{}", i));
                 asm.push("D=A".to_string());
@@ -71,19 +70,19 @@ fn generate_function_asm(
             }
         }
         FunctionArgs::Call(fn_name, n_caller_args) => {
-            let full_fn_name = format!("{}.{}", program_name, fn_name);
+            let full_fn_name = format!("{}", fn_name);
             let call_depth: usize = match function_calls.get_mut(&full_fn_name) {
                 None => {
                     function_calls.insert(full_fn_name, 1);
                     0
-                },
+                }
                 Some(v) => {
                     *v += 1;
                     *v - 1
-                },
+                }
             };
 
-            asm.push(format!("@{}.{}$ret.{}", program_name, fn_name, call_depth));
+            asm.push(format!("@{}$ret.{}", fn_name, call_depth));
             asm.push("D=A".to_string());
             push_d_reg_to_stack!(asm);
 
@@ -107,10 +106,10 @@ fn generate_function_asm(
             asm.push("@LCL".to_string());
             asm.push("M=D".to_string());
 
-            asm.push(format!("@{}.{}", program_name, fn_name));
+            asm.push(format!("@{}", fn_name));
             asm.push("0;JMP".to_string());
 
-            asm.push(format!("({}.{}$ret.{})", program_name, fn_name, call_depth));
+            asm.push(format!("({}$ret.{})", fn_name, call_depth));
         }
         FunctionArgs::Return => {
             // frame = LCL: define frame as temp variable R5 and assign LCL to it
@@ -159,6 +158,7 @@ fn generate_function_asm(
     }
 }
 
+// program_name is only required for static variables
 fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_name: &str) {
     match args {
         OperationArgs::Push(mem_segment, val) => {
@@ -284,7 +284,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
             asm.push("D=M".to_string());
             address_top_stack!(asm);
             asm.push("D=M-D".to_string());
-            asm.push(format!("@{}.{}.PUSH_TRUE", program_name, fn_name));
+            asm.push(format!("@{}.PUSH_TRUE", fn_name));
 
             match args {
                 OperationArgs::Eq(_) => asm.push("D;JEQ".to_string()),
@@ -296,15 +296,15 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
             asm.push("@SP".to_string());
             asm.push("A=M".to_string());
             asm.push("M=0".to_string());
-            asm.push(format!("@{}.{}.NO_OP", program_name, fn_name));
+            asm.push(format!("@{}.NO_OP", fn_name));
             asm.push("0;JMP".to_string());
 
-            asm.push(format!("({}.{}.PUSH_TRUE)", program_name, fn_name));
+            asm.push(format!("({}.PUSH_TRUE)", fn_name));
             asm.push("@SP".to_string());
             asm.push("A=M".to_string());
             asm.push("M=-1".to_string());
 
-            asm.push(format!("({}.{}.NO_OP)", program_name, fn_name));
+            asm.push(format!("({}.NO_OP)", fn_name));
             incr_stack_pointer!(asm);
         }
     }
@@ -315,10 +315,8 @@ pub fn generate_asm(vm_commands: Vec<Command>, program_name: &str) -> Vec<String
     let mut function_calls: HashMap<String, usize> = HashMap::new();
 
     vm_commands.iter().for_each(|vm_command| match vm_command {
-        Command::Branching(args) => generate_branching_asm(args, &mut asm, program_name),
-        Command::Function(args) => {
-            generate_function_asm(args, &mut asm, program_name, &mut function_calls)
-        }
+        Command::Branching(args) => generate_branching_asm(args, &mut asm),
+        Command::Function(args) => generate_function_asm(args, &mut asm, &mut function_calls),
         Command::Operation(args) => generate_operation_asm(args, &mut asm, program_name),
     });
 
@@ -474,18 +472,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestProgram.TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE",
                 "D;JEQ",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestProgram.TestFunction.NO_OP",
+                "@TestFunction.NO_OP",
                 "0;JMP",
-                "(TestProgram.TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestProgram.TestFunction.NO_OP)",
+                "(TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],
@@ -514,18 +512,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestProgram.TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE",
                 "D;JLT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestProgram.TestFunction.NO_OP",
+                "@TestFunction.NO_OP",
                 "0;JMP",
-                "(TestProgram.TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestProgram.TestFunction.NO_OP)",
+                "(TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],
@@ -554,18 +552,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestProgram.TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE",
                 "D;JGT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestProgram.TestFunction.NO_OP",
+                "@TestFunction.NO_OP",
                 "0;JMP",
-                "(TestProgram.TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestProgram.TestFunction.NO_OP)",
+                "(TestFunction.NO_OP)",
                 "@SP",
                 "M=M+1",
             ],
@@ -738,8 +736,8 @@ mod tests {
         assert_commands_eq(
             vec![label_definition, goto_label],
             vec![
-                vec!["(TestProgram.TestFunction$TestLabel)"],
-                vec!["@TestProgram.TestFunction$TestLabel", "0;JMP"],
+                vec!["(TestFunction$TestLabel)"],
+                vec!["@TestFunction$TestLabel", "0;JMP"],
             ],
         );
     }
@@ -757,10 +755,7 @@ mod tests {
             )),
         ];
 
-        let expected_asm = vec![
-            vec!["(TestProgram.FirstFunction$Test)"],
-            vec!["(TestProgram.SecondFunction$Test)"],
-        ];
+        let expected_asm = vec![vec!["(FirstFunction$Test)"], vec!["(SecondFunction$Test)"]];
 
         assert_commands_eq(
             vm_commands
@@ -783,13 +778,13 @@ mod tests {
         ));
 
         let expected_asm = vec![
-            vec!["(TestProgram.TestFunction$TestLabel)"],
+            vec!["(TestFunction$TestLabel)"],
             vec![
                 "@SP",
                 "M=M-1",
                 "A=M",
                 "D=M",
-                "@TestProgram.TestFunction$TestLabel",
+                "@TestFunction$TestLabel",
                 "D;JNE",
             ],
         ];
@@ -800,7 +795,7 @@ mod tests {
     #[test]
     fn define_function_signature_with_no_local_vars() {
         let cmd = Command::Function(FunctionArgs::Function("TestFunc".to_string(), 0));
-        let expected_asm = vec![vec!["(TestProgram.TestFunc)"]];
+        let expected_asm = vec![vec!["(TestFunc)"]];
 
         assert_commands_eq(vec![cmd], expected_asm);
     }
@@ -810,7 +805,7 @@ mod tests {
         let cmd = Command::Function(FunctionArgs::Function("TestFunc".to_string(), 2));
 
         let expected_asm = vec![vec![
-            "(TestProgram.TestFunc)",
+            "(TestFunc)",
             "@0",
             "D=A",
             "@LCL",
@@ -850,7 +845,7 @@ mod tests {
             // --- begin call function --- //
             vec![
                 // Push return address
-                "@TestProgram.Sum$ret.0",
+                "@Sum$ret.0",
                 "D=A",
                 "@SP",
                 "A=M",
@@ -902,15 +897,15 @@ mod tests {
                 "@LCL",
                 "M=D",
                 // goto callee
-                "@TestProgram.Sum",
+                "@Sum",
                 "0;JMP",
                 // inject return address label to the asm instructions
-                "(TestProgram.Sum$ret.0)",
+                "(Sum$ret.0)",
             ],
             // --- end call function --- //
 
             // // --- begin function definition --- //
-            vec!["(TestProgram.Sum)"],
+            vec!["(Sum)"],
             // no local vars init since there are no local vars
             //
             // push arg0 to stack
@@ -957,9 +952,33 @@ mod tests {
 
         let asm_commands = generate_asm(vm_commands, "TestProgram");
 
-        assert!(asm_commands.iter().filter(|cmd| *cmd == "(TestProgram.Test$ret.0)").count() == 1);
-        assert!(asm_commands.iter().filter(|cmd| *cmd == "@TestProgram.Test$ret.0").count() == 1);
-        assert!(asm_commands.iter().filter(|cmd| *cmd == "(TestProgram.Test$ret.1)").count() == 1);
-        assert!(asm_commands.iter().filter(|cmd| *cmd == "@TestProgram.Test$ret.1").count() == 1);
+        assert!(
+            asm_commands
+                .iter()
+                .filter(|cmd| *cmd == "(Test$ret.0)")
+                .count()
+                == 1
+        );
+        assert!(
+            asm_commands
+                .iter()
+                .filter(|cmd| *cmd == "@Test$ret.0")
+                .count()
+                == 1
+        );
+        assert!(
+            asm_commands
+                .iter()
+                .filter(|cmd| *cmd == "(Test$ret.1)")
+                .count()
+                == 1
+        );
+        assert!(
+            asm_commands
+                .iter()
+                .filter(|cmd| *cmd == "@Test$ret.1")
+                .count()
+                == 1
+        );
     }
 }
