@@ -31,10 +31,7 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
                 current_fn = fn_args.fn_name();
                 commands.push(Command::Function(fn_args));
             }
-            "return" => {
-                commands.push(Command::Function(vm_command.try_into().unwrap()));
-            }
-            "call" => {
+            "return" | "call" => {
                 commands.push(Command::Function(vm_command.try_into().unwrap()));
             }
             "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
