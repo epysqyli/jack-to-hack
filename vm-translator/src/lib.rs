@@ -36,33 +36,35 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
         vm_file_paths.push(vm_path.to_path_buf());
     }
 
-    // TODO: bootstrap hack machine:
-    // - set SP to 256
-    // - call Sys.init, which calls Main.main
-    let mut asm: Vec<String> = vec![];
+    // TODO: mprove bootstrap when necessary
+    let bootstrap_instructions = vec![
+        "call Sys.init 0".to_string(),
+        "label INFINITE_LOOP".to_string(),
+        "goto INFINITE_LOOP".to_string(),
+        "function Sys.init 0".to_string(),
+        "call Main.main 0".to_string(),
+        "return".to_string(),
+    ];
 
-    for vm_file_path in vm_file_paths {
-        let program_name = &vm_file_path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .split('.')
-            .collect::<Vec<&str>>()[0];
+    let vm_instructions: Vec<String> = vm_file_paths
+        .iter()
+        .flat_map(|vm_file_path| read_vm_program_from_path(&vm_file_path))
+        .collect();
 
-        let vm_program = read_vm_program_from_path(&vm_file_path);
-        let vm_commands = parse(vm_program);
-        let program_asm = generate_asm(vm_commands, &program_name);
-
-        program_asm
+    let commands = parse(
+        bootstrap_instructions
             .into_iter()
-            .for_each(|asm_command| asm.push(asm_command));
-    }
+            .chain(vm_instructions)
+            .collect(),
+    );
 
-    // TODO: should this be done?
-    asm.push("(END)".to_string());
-    asm.push("@END".to_string());
-    asm.push("0;JMP".to_string());
+    let mut asm = generate_asm(commands);
+
+    // Set SP to 256 as first bootstrapping step
+    asm.insert(0, "@256".to_string());
+    asm.insert(1, "D=A".to_string());
+    asm.insert(2, "@SP".to_string());
+    asm.insert(3, "M=D".to_string());
 
     asm
 }

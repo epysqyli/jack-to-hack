@@ -70,10 +70,9 @@ fn generate_function_asm(
             }
         }
         FunctionArgs::Call(fn_name, n_caller_args) => {
-            let full_fn_name = format!("{}", fn_name);
-            let call_depth: usize = match function_calls.get_mut(&full_fn_name) {
+            let call_depth: usize = match function_calls.get_mut(fn_name) {
                 None => {
-                    function_calls.insert(full_fn_name, 1);
+                    function_calls.insert(fn_name.clone(), 1);
                     0
                 }
                 Some(v) => {
@@ -86,7 +85,7 @@ fn generate_function_asm(
             asm.push("D=A".to_string());
             push_d_reg_to_stack!(asm);
 
-            vec!["@LCL", "@ARG", "@THIS", "@THAT"]
+            ["@LCL", "@ARG", "@THIS", "@THAT"]
                 .iter()
                 .for_each(|mem_segment| {
                     asm.push(mem_segment.to_string());
@@ -120,7 +119,8 @@ fn generate_function_asm(
 
             // save the return address (M[LCL] - 5) to temp variable R6
             asm.push("@5".to_string());
-            asm.push("D=D-A".to_string());
+            asm.push("A=D-A".to_string());
+            asm.push("D=M".to_string());
             asm.push("@R6".to_string());
             asm.push("M=D".to_string());
 
@@ -137,7 +137,7 @@ fn generate_function_asm(
             asm.push("@SP".to_string());
             asm.push("M=D".to_string());
 
-            for (i, mem_segment) in vec!["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+            for (i, mem_segment) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
                 asm.push("@R5".to_string());
                 asm.push("D=M".to_string());
                 for _ in 1..=i {
@@ -152,14 +152,13 @@ fn generate_function_asm(
             // goto return address
             asm.push("@R6".to_string());
             asm.push("A=M".to_string());
-            asm.push("A=M".to_string());
             asm.push("0;JMP".to_string());
         }
     }
 }
 
-// program_name is only required for static variables
-fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_name: &str) {
+// TODO: static variables need to be prefixed by the filename
+fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
     match args {
         OperationArgs::Push(mem_segment, val) => {
             match mem_segment {
@@ -189,7 +188,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
                     incr_stack_pointer!(asm);
                 }
                 MemorySegment::Static => {
-                    asm.push(format!("@{}.{}", program_name, val));
+                    asm.push(format!("@{}.{}", "program_name", val));
                     asm.push("D=M".to_string());
                     assign_d_reg_to_stack!(asm);
                     incr_stack_pointer!(asm);
@@ -240,7 +239,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
                 MemorySegment::Static => {
                     address_top_stack!(asm);
                     asm.push("D=M".to_string());
-                    asm.push(format!("@{}.{}", program_name, val));
+                    asm.push(format!("@{}.{}", "program_name", val));
                     asm.push("M=D".to_string());
                 }
                 MemorySegment::Pointer => {
@@ -310,14 +309,14 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>, program_n
     }
 }
 
-pub fn generate_asm(vm_commands: Vec<Command>, program_name: &str) -> Vec<String> {
+pub fn generate_asm(vm_commands: Vec<Command>) -> Vec<String> {
     let mut asm: Vec<String> = vec![];
     let mut function_calls: HashMap<String, usize> = HashMap::new();
 
     vm_commands.iter().for_each(|vm_command| match vm_command {
         Command::Branching(args) => generate_branching_asm(args, &mut asm),
         Command::Function(args) => generate_function_asm(args, &mut asm, &mut function_calls),
-        Command::Operation(args) => generate_operation_asm(args, &mut asm, program_name),
+        Command::Operation(args) => generate_operation_asm(args, &mut asm),
     });
 
     asm
@@ -330,7 +329,7 @@ mod tests {
     fn assert_commands_eq(vm_commands: Vec<Command>, expected_asm: Vec<Vec<&str>>) {
         let expected: Vec<&str> = expected_asm.into_iter().flat_map(|asm| asm).collect();
 
-        let actual = generate_asm(vm_commands, "TestProgram");
+        let actual = generate_asm(vm_commands);
 
         assert_eq!(expected, actual);
     }
@@ -931,12 +930,11 @@ mod tests {
         assert_commands_eq(
             vec![Command::Function(FunctionArgs::Return)],
             vec![vec![
-                "@LCL", "D=M", "@R5", "M=D", "@5", "D=D-A", "@R6", "M=D", "@SP", "M=M-1", "A=M",
+                "@LCL", "D=M", "@R5", "M=D", "@5", "A=D-A", "D=M", "@R6", "M=D", "@SP", "M=M-1", "A=M",
                 "D=M", "@ARG", "A=M", "M=D", "@ARG", "D=M+1", "@SP", "M=D", "@R5", "D=M", "A=D-1",
                 "D=M", "@THAT", "M=D", "@R5", "D=M", "D=D-1", "A=D-1", "D=M", "@THIS", "M=D",
                 "@R5", "D=M", "D=D-1", "D=D-1", "A=D-1", "D=M", "@ARG", "M=D", "@R5", "D=M",
-                "D=D-1", "D=D-1", "D=D-1", "A=D-1", "D=M", "@LCL", "M=D", "@R6", "A=M", "A=M",
-                "0;JMP",
+                "D=D-1", "D=D-1", "D=D-1", "A=D-1", "D=M", "@LCL", "M=D", "@R6", "A=M", "0;JMP",
             ]],
         );
     }
@@ -950,7 +948,7 @@ mod tests {
             Command::Function(FunctionArgs::Return),
         ];
 
-        let asm_commands = generate_asm(vm_commands, "TestProgram");
+        let asm_commands = generate_asm(vm_commands);
 
         assert!(
             asm_commands
