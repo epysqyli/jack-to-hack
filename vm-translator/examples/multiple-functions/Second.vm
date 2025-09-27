@@ -1,0 +1,5 @@
+function Second.addTwo 0
+	push argument 0
+	push constant 2
+	add
+	return

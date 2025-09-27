@@ -1,0 +1,5 @@
+function Main.main 0
+	push constant 0
+	call First.addOne 1
+	call Second.addTwo 1
+	return
