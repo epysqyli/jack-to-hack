@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq)]
 pub enum OperationArgs {
-    Push(MemorySegment, i16),
-    Pop(MemorySegment, i16),
+    Push(MemorySegment, i16, String),
+    Pop(MemorySegment, i16, String),
     Add,
     Sub,
     Neg,
@@ -12,18 +12,22 @@ pub enum OperationArgs {
     Or,
     Not,
 }
+
 impl OperationArgs {
     pub fn from(vm_command: String, fn_name: String) -> Result<Self, &'static str> {
+        let (filename, _) = fn_name.split_once('.').expect("Cannot extract filename from function");
         let vm_tokens: Vec<&str> = vm_command.split(' ').collect();
 
         match vm_tokens[0] {
             "push" => Ok(OperationArgs::Push(
                 vm_tokens[1].try_into().unwrap(),
                 vm_tokens[2].parse::<i16>().unwrap(),
+                filename.to_string()
             )),
             "pop" => Ok(OperationArgs::Pop(
                 vm_tokens[1].try_into().unwrap(),
                 vm_tokens[2].parse::<i16>().unwrap(),
+                filename.to_string()
             )),
             "add" => Ok(OperationArgs::Add),
             "sub" => Ok(OperationArgs::Sub),

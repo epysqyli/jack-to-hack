@@ -53,27 +53,50 @@ mod tests {
 
     #[test]
     fn test_stack_push() {
-        let expected = vec![Command::Operation(OperationArgs::Push(
-            MemorySegment::Constant,
-            1,
-        ))];
-        let vm_commands: Vec<String> = vec!["push constant 1".to_string()];
-        let actual = parse(vm_commands);
+        let expected = vec![
+            Command::Function(FunctionArgs::Function(
+                "TestFile.testFunction".to_string(),
+                0,
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                "TestFile".to_string(),
+            )),
+        ];
 
-        assert_eq!(expected, actual)
+        let vm_commands: Vec<String> = vec![
+            "function TestFile.testFunction 0".to_string(),
+            "push constant 1".to_string(),
+        ];
+
+        assert_eq!(expected, parse(vm_commands))
     }
 
     #[test]
     fn test_double_stack_push_and_add() {
         let vm_commands = vec![
+            "function TestFile.testFunction 0".to_string(),
             "push constant 1".to_string(),
             "push constant 2".to_string(),
             "add".to_string(),
         ];
 
         let expected = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Function(FunctionArgs::Function(
+                "TestFile.testFunction".to_string(),
+                0,
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                "TestFile".to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                "TestFile".to_string(),
+            )),
             Command::Operation(OperationArgs::Add),
         ];
 

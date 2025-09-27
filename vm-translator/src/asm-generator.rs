@@ -157,10 +157,11 @@ fn generate_function_asm(
     }
 }
 
-// TODO: static variables need to be prefixed by the filename
+// TODO: static variables need to be prefixed by the filename,
+// which can be extracted from the Filename.FunctionName prefix
 fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
     match args {
-        OperationArgs::Push(mem_segment, val) => {
+        OperationArgs::Push(mem_segment, val, filename) => {
             match mem_segment {
                 MemorySegment::Constant => {
                     asm.push(format!("@{}", val));
@@ -188,7 +189,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
                     incr_stack_pointer!(asm);
                 }
                 MemorySegment::Static => {
-                    asm.push(format!("@{}.{}", "program_name", val));
+                    asm.push(format!("@{}.{}", filename, val));
                     asm.push("D=M".to_string());
                     assign_d_reg_to_stack!(asm);
                     incr_stack_pointer!(asm);
@@ -205,7 +206,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
                 }
             };
         }
-        OperationArgs::Pop(mem_segment, val) => {
+        OperationArgs::Pop(mem_segment, val, filename) => {
             match mem_segment {
                 MemorySegment::Local
                 | MemorySegment::Argument
@@ -239,7 +240,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
                 MemorySegment::Static => {
                     address_top_stack!(asm);
                     asm.push("D=M".to_string());
-                    asm.push(format!("@{}.{}", "program_name", val));
+                    asm.push(format!("@{}.{}", filename, val));
                     asm.push("M=D".to_string());
                 }
                 MemorySegment::Pointer => {
@@ -326,6 +327,8 @@ pub fn generate_asm(vm_commands: Vec<Command>) -> Vec<String> {
 mod tests {
     use super::*;
 
+    const FILENAME: &'static str = "Filename";
+
     fn assert_commands_eq(vm_commands: Vec<Command>, expected_asm: Vec<Vec<&str>>) {
         let expected: Vec<&str> = expected_asm.into_iter().flat_map(|asm| asm).collect();
 
@@ -340,6 +343,7 @@ mod tests {
             vec![Command::Operation(OperationArgs::Push(
                 MemorySegment::Constant,
                 1,
+                self::FILENAME.to_string(),
             ))],
             vec![vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]],
         );
@@ -348,8 +352,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_add() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Add),
         ];
 
@@ -367,8 +379,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_sub() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Sub),
         ];
 
@@ -386,8 +406,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_logical_and() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::And),
         ];
 
@@ -405,8 +433,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_logical_or() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Or),
         ];
 
@@ -424,7 +460,11 @@ mod tests {
     #[test]
     fn single_stack_push_and_neg() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Neg),
         ];
 
@@ -439,7 +479,11 @@ mod tests {
     #[test]
     fn single_stack_push_and_not() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Not),
         ];
 
@@ -454,8 +498,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_eq() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Eq("TestFunction".to_string())),
         ];
 
@@ -494,8 +546,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_lt() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Lt("TestFunction".to_string())),
         ];
 
@@ -534,8 +594,16 @@ mod tests {
     #[test]
     fn stack_double_push_and_gt() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Gt("TestFunction".to_string())),
         ];
 
@@ -574,10 +642,22 @@ mod tests {
     #[test]
     fn push_twice_add_push_and_sub() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                5,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                5,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Add),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 10)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                10,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Sub),
         ];
 
@@ -609,8 +689,16 @@ mod tests {
             let mem_segment_asm = &memory_segment.as_asm_mnemonic();
             assert_commands_eq(
                 vec![
-                    Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-                    Command::Operation(OperationArgs::Pop(memory_segment, 5)),
+                    Command::Operation(OperationArgs::Push(
+                        MemorySegment::Constant,
+                        1,
+                        self::FILENAME.to_string(),
+                    )),
+                    Command::Operation(OperationArgs::Pop(
+                        memory_segment,
+                        5,
+                        self::FILENAME.to_string(),
+                    )),
                 ],
                 vec![
                     vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
@@ -642,9 +730,21 @@ mod tests {
     #[test]
     fn push_to_stack_pop_to_local_and_back_to_stack() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
-            Command::Operation(OperationArgs::Pop(MemorySegment::Local, 2)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Local, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                5,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Pop(
+                MemorySegment::Local,
+                2,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Local,
+                2,
+                self::FILENAME.to_string(),
+            )),
         ];
 
         let expected_asm = vec![
@@ -664,9 +764,21 @@ mod tests {
     #[test]
     fn push_to_stack_pop_to_temp_and_push_from_temp_to_stack() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 3)),
-            Command::Operation(OperationArgs::Pop(MemorySegment::Temp, 4)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Temp, 4)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                3,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Pop(
+                MemorySegment::Temp,
+                4,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Temp,
+                4,
+                self::FILENAME.to_string(),
+            )),
         ];
 
         let expected_asm = vec![
@@ -684,15 +796,27 @@ mod tests {
     #[test]
     fn push_to_stack_and_pop_to_static_and_push_back_to_stack() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
-            Command::Operation(OperationArgs::Pop(MemorySegment::Static, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Static, 1)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                5,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Pop(
+                MemorySegment::Static,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Static,
+                1,
+                self::FILENAME.to_string(),
+            )),
         ];
 
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@TestProgram.1", "M=D"],
-            vec!["@TestProgram.1", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@Filename.1", "M=D"],
+            vec!["@Filename.1", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -701,12 +825,36 @@ mod tests {
     #[test]
     fn push_to_stack_and_pop_to_pointers() {
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 5)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 6)),
-            Command::Operation(OperationArgs::Pop(MemorySegment::Pointer, 0)),
-            Command::Operation(OperationArgs::Pop(MemorySegment::Pointer, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Pointer, 0)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Pointer, 1)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                5,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                6,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Pop(
+                MemorySegment::Pointer,
+                0,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Pop(
+                MemorySegment::Pointer,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Pointer,
+                0,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Pointer,
+                1,
+                self::FILENAME.to_string(),
+            )),
         ];
 
         let expected_asm = vec![
@@ -826,12 +974,28 @@ mod tests {
         let define_fn_command = Command::Function(FunctionArgs::Function("Sum".to_string(), 0));
 
         let vm_commands: Vec<Command> = vec![
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 1)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Constant, 2)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                1,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Constant,
+                2,
+                self::FILENAME.to_string(),
+            )),
             call_fn_command,
             define_fn_command,
-            Command::Operation(OperationArgs::Push(MemorySegment::Argument, 0)),
-            Command::Operation(OperationArgs::Push(MemorySegment::Argument, 1)),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Argument,
+                0,
+                self::FILENAME.to_string(),
+            )),
+            Command::Operation(OperationArgs::Push(
+                MemorySegment::Argument,
+                1,
+                self::FILENAME.to_string(),
+            )),
             Command::Operation(OperationArgs::Add),
         ];
 
@@ -930,10 +1094,10 @@ mod tests {
         assert_commands_eq(
             vec![Command::Function(FunctionArgs::Return)],
             vec![vec![
-                "@LCL", "D=M", "@R5", "M=D", "@5", "A=D-A", "D=M", "@R6", "M=D", "@SP", "M=M-1", "A=M",
-                "D=M", "@ARG", "A=M", "M=D", "@ARG", "D=M+1", "@SP", "M=D", "@R5", "D=M", "A=D-1",
-                "D=M", "@THAT", "M=D", "@R5", "D=M", "D=D-1", "A=D-1", "D=M", "@THIS", "M=D",
-                "@R5", "D=M", "D=D-1", "D=D-1", "A=D-1", "D=M", "@ARG", "M=D", "@R5", "D=M",
+                "@LCL", "D=M", "@R5", "M=D", "@5", "A=D-A", "D=M", "@R6", "M=D", "@SP", "M=M-1",
+                "A=M", "D=M", "@ARG", "A=M", "M=D", "@ARG", "D=M+1", "@SP", "M=D", "@R5", "D=M",
+                "A=D-1", "D=M", "@THAT", "M=D", "@R5", "D=M", "D=D-1", "A=D-1", "D=M", "@THIS",
+                "M=D", "@R5", "D=M", "D=D-1", "D=D-1", "A=D-1", "D=M", "@ARG", "M=D", "@R5", "D=M",
                 "D=D-1", "D=D-1", "D=D-1", "A=D-1", "D=M", "@LCL", "M=D", "@R6", "A=M", "0;JMP",
             ]],
         );
