@@ -1,5 +1,5 @@
 ### Jack To Hack Compiler
-Jack is the Java like high level language built from the ground up in the [From Nand To Tetris Course](https://www.nand2tetris.org/course).
+Jack is a Java-like high level language built from the ground up in the [From Nand To Tetris Course](https://www.nand2tetris.org/course).
 
 This repo contains several packages:
 - `hack-assembler`: an assembler from .asm to .hack machine language code
