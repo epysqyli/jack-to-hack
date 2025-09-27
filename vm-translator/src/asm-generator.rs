@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use crate::parser::Command;
-use crate::parser::branching::BranchingArgs;
-use crate::parser::function::FunctionArgs;
-use crate::parser::operation::*;
+use crate::command::{
+    Command,
+    branching::BranchingArgs,
+    function::FunctionArgs,
+    operation::{MemorySegment, OperationArgs},
+};
 
 macro_rules! address_top_stack {
     ($asm_instructions: ident) => {

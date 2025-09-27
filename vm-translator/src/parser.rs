@@ -1,14 +1,6 @@
-pub mod branching;
-pub mod function;
-pub mod operation;
-use crate::parser::{branching::BranchingArgs, function::FunctionArgs, operation::OperationArgs};
-
-#[derive(Debug, PartialEq)]
-pub enum Command {
-    Branching(BranchingArgs),
-    Function(FunctionArgs),
-    Operation(OperationArgs),
-}
+use crate::command::{
+    Command, branching::BranchingArgs, function::FunctionArgs, operation::OperationArgs,
+};
 
 pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
     let mut commands: Vec<Command> = vec![];
@@ -49,7 +41,7 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{function::FunctionArgs, operation::MemorySegment};
+    use crate::command::operation::MemorySegment;
 
     #[test]
     fn test_stack_push() {

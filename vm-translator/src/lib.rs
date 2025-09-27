@@ -1,8 +1,8 @@
-use crate::{asm_generator::generate_asm, parser::parse};
 use std::{fs::read_to_string, path::PathBuf};
 
 #[path = "asm-generator.rs"]
 mod asm_generator;
+mod command;
 mod parser;
 
 fn read_vm_program_from_path(vm_program_path: &PathBuf) -> Vec<String> {
@@ -52,14 +52,14 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
         .flat_map(|vm_file_path| read_vm_program_from_path(&vm_file_path))
         .collect();
 
-    let commands = parse(
+    let commands = parser::parse(
         bootstrap_instructions
             .into_iter()
             .chain(vm_instructions)
             .collect(),
     );
 
-    let mut asm = generate_asm(commands);
+    let mut asm = asm_generator::generate_asm(commands);
 
     // Set SP to 256 as first bootstrapping step
     asm.insert(0, "@256".to_string());
