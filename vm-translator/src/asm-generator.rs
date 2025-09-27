@@ -7,320 +7,318 @@ use crate::command::{
     operation::{MemorySegment, OperationArgs},
 };
 
-macro_rules! address_top_stack {
-    ($asm_instructions: ident) => {
-        $asm_instructions.push("@SP".to_string());
-        $asm_instructions.push("M=M-1".to_string());
-        $asm_instructions.push("A=M".to_string());
-    };
+pub(super) struct AsmGenerator {
+    instructions: Vec<String>,
+    function_calls: HashMap<String, usize>,
 }
 
-macro_rules! assign_d_reg_to_stack {
-    ($asm_instructions: ident) => {
-        $asm_instructions.push("@SP".to_string());
-        $asm_instructions.push("A=M".to_string());
-        $asm_instructions.push("M=D".to_string());
-    };
-}
+impl AsmGenerator {
+    pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
+        let mut asm_generator = Self {
+            instructions: vec![],
+            function_calls: HashMap::new(),
+        };
 
-macro_rules! incr_stack_pointer {
-    ($asm_instructions: ident) => {
-        $asm_instructions.push("@SP".to_string());
-        $asm_instructions.push("M=M+1".to_string());
-    };
-}
+        vm_commands.iter().for_each(|vm_command| match vm_command {
+            Command::Branching(args) => asm_generator.generate_branching_asm(args),
+            Command::Function(args) => asm_generator.generate_function_asm(args),
+            Command::Operation(args) => asm_generator.generate_operation_asm(args),
+        });
 
-macro_rules! push_d_reg_to_stack {
-    ($asm_instructions: ident) => {
-        assign_d_reg_to_stack!($asm_instructions);
-        incr_stack_pointer!($asm_instructions);
-    };
-}
-
-fn generate_branching_asm(args: &BranchingArgs, asm: &mut Vec<String>) {
-    match args {
-        BranchingArgs::Label(label, fn_name) => {
-            asm.push(format!("({}${})", fn_name, label));
-        }
-        BranchingArgs::Goto(label, fn_name) => {
-            asm.push(format!("@{}${}", fn_name, label));
-            asm.push("0;JMP".to_string());
-        }
-        BranchingArgs::IfGoto(label, fn_name) => {
-            address_top_stack!(asm);
-            asm.push("D=M".to_string());
-            asm.push(format!("@{}${}", fn_name, label));
-            asm.push("D;JNE".to_string());
-        }
+        asm_generator.instructions
     }
-}
 
-fn generate_function_asm(
-    args: &FunctionArgs,
-    asm: &mut Vec<String>,
-    function_calls: &mut HashMap<String, usize>,
-) {
-    match args {
-        FunctionArgs::Function(fn_name, n_local_vars) => {
-            asm.push(format!("({})", fn_name));
-            for i in 0..*n_local_vars {
-                asm.push(format!("@{}", i));
-                asm.push("D=A".to_string());
-                asm.push("@LCL".to_string());
-                asm.push("A=D+M".to_string());
-                asm.push("M=0".to_string());
+    fn add(self: &mut Self, cmd: &str) {
+        self.instructions.push(cmd.to_string());
+    }
+
+    fn address_top_stack(self: &mut Self) {
+        self.add("@SP");
+        self.add("M=M-1");
+        self.add("A=M");
+    }
+
+    fn assign_d_reg_to_stack(self: &mut Self) {
+        self.add("@SP");
+        self.add("A=M");
+        self.add("M=D");
+    }
+
+    fn incr_stack_pointer(self: &mut Self) {
+        self.add("@SP");
+        self.add("M=M+1");
+    }
+
+    fn push_d_reg_to_stack(self: &mut Self) {
+        self.assign_d_reg_to_stack();
+        self.incr_stack_pointer();
+    }
+
+    fn generate_branching_asm(self: &mut Self, args: &BranchingArgs) {
+        match args {
+            BranchingArgs::Label(label, fn_name) => {
+                self.add(format!("({}${})", fn_name, label).as_str());
+            }
+            BranchingArgs::Goto(label, fn_name) => {
+                self.add(format!("@{}${}", fn_name, label).as_str());
+                self.add("0;JMP");
+            }
+            BranchingArgs::IfGoto(label, fn_name) => {
+                self.address_top_stack();
+                self.add("D=M");
+                self.add(format!("@{}${}", fn_name, label).as_str());
+                self.add("D;JNE");
             }
         }
-        FunctionArgs::Call(fn_name, n_caller_args) => {
-            let call_depth: usize = match function_calls.get_mut(fn_name) {
-                None => {
-                    function_calls.insert(fn_name.clone(), 1);
-                    0
-                }
-                Some(v) => {
-                    *v += 1;
-                    *v - 1
-                }
-            };
-
-            asm.push(format!("@{}$ret.{}", fn_name, call_depth));
-            asm.push("D=A".to_string());
-            push_d_reg_to_stack!(asm);
-
-            ["@LCL", "@ARG", "@THIS", "@THAT"]
-                .iter()
-                .for_each(|mem_segment| {
-                    asm.push(mem_segment.to_string());
-                    asm.push("D=M".to_string());
-                    push_d_reg_to_stack!(asm);
-                });
-
-            asm.push("@SP".to_string());
-            asm.push("D=M".to_string());
-            asm.push(format!("@{}", 5 + n_caller_args));
-            asm.push("D=D-A".to_string());
-            asm.push("@ARG".to_string());
-            asm.push("M=D".to_string());
-
-            asm.push("@SP".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@LCL".to_string());
-            asm.push("M=D".to_string());
-
-            asm.push(format!("@{}", fn_name));
-            asm.push("0;JMP".to_string());
-
-            asm.push(format!("({}$ret.{})", fn_name, call_depth));
-        }
-        FunctionArgs::Return => {
-            // frame = LCL: define frame as temp variable R5 and assign LCL to it
-            asm.push("@LCL".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@R5".to_string());
-            asm.push("M=D".to_string());
-
-            // save the return address (M[LCL] - 5) to temp variable R6
-            asm.push("@5".to_string());
-            asm.push("A=D-A".to_string());
-            asm.push("D=M".to_string());
-            asm.push("@R6".to_string());
-            asm.push("M=D".to_string());
-
-            // reposition return value for the caller: pop from the stack to ARG
-            address_top_stack!(asm);
-            asm.push("D=M".to_string());
-            asm.push("@ARG".to_string());
-            asm.push("A=M".to_string());
-            asm.push("M=D".to_string());
-
-            // reposition SP for the caller to @ARG + 1
-            asm.push("@ARG".to_string());
-            asm.push("D=M+1".to_string());
-            asm.push("@SP".to_string());
-            asm.push("M=D".to_string());
-
-            for (i, mem_segment) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
-                asm.push("@R5".to_string());
-                asm.push("D=M".to_string());
-                for _ in 1..=i {
-                    asm.push("D=D-1".to_string());
-                }
-                asm.push("A=D-1".to_string());
-                asm.push("D=M".to_string());
-                asm.push(mem_segment.to_string());
-                asm.push("M=D".to_string());
-            }
-
-            // goto return address
-            asm.push("@R6".to_string());
-            asm.push("A=M".to_string());
-            asm.push("0;JMP".to_string());
-        }
     }
-}
 
-fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
-    match args {
-        OperationArgs::Push(mem_segment, val, filename) => {
-            match mem_segment {
-                MemorySegment::Constant => {
-                    asm.push(format!("@{}", val));
-                    asm.push("D=A".to_string());
-                    assign_d_reg_to_stack!(asm);
-                    incr_stack_pointer!(asm);
+    fn generate_function_asm(self: &mut Self, args: &FunctionArgs) {
+        match args {
+            FunctionArgs::Function(fn_name, n_local_vars) => {
+                self.add(format!("({})", fn_name).as_str());
+                for i in 0..*n_local_vars {
+                    self.add(format!("@{}", i).as_str());
+                    self.add("D=A");
+                    self.add("@LCL");
+                    self.add("A=D+M");
+                    self.add("M=0");
                 }
-                MemorySegment::Local
-                | MemorySegment::Argument
-                | MemorySegment::This
-                | MemorySegment::That => {
-                    asm.push(format!("@{}", val));
-                    asm.push("D=A".to_string());
-                    asm.push(mem_segment.as_asm_mnemonic());
-                    asm.push("A=D+M".to_string());
-                    asm.push("D=M".to_string());
-                    assign_d_reg_to_stack!(asm);
-                    incr_stack_pointer!(asm);
-                }
-                MemorySegment::Temp => {
-                    // TEMP address range is 5..12
-                    asm.push(format!("@R{}", 5 + val));
-                    asm.push("D=M".to_string());
-                    assign_d_reg_to_stack!(asm);
-                    incr_stack_pointer!(asm);
-                }
-                MemorySegment::Static => {
-                    asm.push(format!("@{}.{}", filename, val));
-                    asm.push("D=M".to_string());
-                    assign_d_reg_to_stack!(asm);
-                    incr_stack_pointer!(asm);
-                }
-                MemorySegment::Pointer => {
-                    match val {
-                        0 => asm.push(format!("@THIS")),
-                        1 => asm.push(format!("@THAT")),
-                        _ => panic!("Pop operations on pointer allow values 0 or 1"),
+            }
+            FunctionArgs::Call(fn_name, n_caller_args) => {
+                let call_depth: usize = match self.function_calls.get_mut(fn_name) {
+                    None => {
+                        self.function_calls.insert(fn_name.clone(), 1);
+                        0
                     }
-                    asm.push("D=M".to_string());
-                    assign_d_reg_to_stack!(asm);
-                    incr_stack_pointer!(asm);
-                }
-            };
-        }
-        OperationArgs::Pop(mem_segment, val, filename) => {
-            match mem_segment {
-                MemorySegment::Local
-                | MemorySegment::Argument
-                | MemorySegment::This
-                | MemorySegment::That => {
-                    address_top_stack!(asm);
-                    asm.push("D=M".to_string());
-                    asm.push("@R13".to_string());
-                    asm.push("M=D".to_string());
-
-                    asm.push(format!("@{}", val));
-                    asm.push("D=A".to_string());
-                    asm.push(mem_segment.as_asm_mnemonic());
-                    asm.push("A=D+M".to_string());
-                    asm.push("D=A".to_string());
-                    asm.push("@R14".to_string());
-                    asm.push("M=D".to_string());
-                    asm.push("@R13".to_string());
-                    asm.push("D=M".to_string());
-                    asm.push("@R14".to_string());
-                    asm.push("A=M".to_string());
-                    asm.push("M=D".to_string());
-                }
-                MemorySegment::Temp => {
-                    address_top_stack!(asm);
-                    asm.push("D=M".to_string());
-                    // TEMP address range is 5..12
-                    asm.push(format!("@R{}", 5 + val));
-                    asm.push("M=D".to_string());
-                }
-                MemorySegment::Static => {
-                    address_top_stack!(asm);
-                    asm.push("D=M".to_string());
-                    asm.push(format!("@{}.{}", filename, val));
-                    asm.push("M=D".to_string());
-                }
-                MemorySegment::Pointer => {
-                    address_top_stack!(asm);
-                    asm.push("D=M".to_string());
-                    match val {
-                        0 => asm.push(format!("@THIS")),
-                        1 => asm.push(format!("@THAT")),
-                        _ => panic!("Pop operations on pointer allow values 0 or 1"),
+                    Some(v) => {
+                        *v += 1;
+                        *v - 1
                     }
-                    asm.push("M=D".to_string());
+                };
+
+                self.add(format!("@{}$ret.{}", fn_name, call_depth).as_str());
+                self.add("D=A");
+                self.push_d_reg_to_stack();
+
+                ["@LCL", "@ARG", "@THIS", "@THAT"]
+                    .iter()
+                    .for_each(|mem_segment| {
+                        self.add(mem_segment);
+                        self.add("D=M");
+                        self.push_d_reg_to_stack();
+                    });
+
+                self.add("@SP");
+                self.add("D=M");
+                self.add(format!("@{}", 5 + n_caller_args).as_str());
+                self.add("D=D-A");
+                self.add("@ARG");
+                self.add("M=D");
+
+                self.add("@SP");
+                self.add("D=M");
+                self.add("@LCL");
+                self.add("M=D");
+
+                self.add(format!("@{}", fn_name).as_str());
+                self.add("0;JMP");
+
+                self.add(format!("({}$ret.{})", fn_name, call_depth).as_str());
+            }
+            FunctionArgs::Return => {
+                // frame = LCL: define frame as temp variable R5 and assign LCL to it
+                self.add("@LCL");
+                self.add("D=M");
+                self.add("@R5");
+                self.add("M=D");
+
+                // save the return address (M[LCL] - 5) to temp variable R6
+                self.add("@5");
+                self.add("A=D-A");
+                self.add("D=M");
+                self.add("@R6");
+                self.add("M=D");
+
+                // reposition return value for the caller: pop from the stack to ARG
+                self.address_top_stack();
+                self.add("D=M");
+                self.add("@ARG");
+                self.add("A=M");
+                self.add("M=D");
+
+                // reposition SP for the caller to @ARG + 1
+                self.add("@ARG");
+                self.add("D=M+1");
+                self.add("@SP");
+                self.add("M=D");
+
+                for (i, mem_segment) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+                    self.add("@R5");
+                    self.add("D=M");
+                    for _ in 1..=i {
+                        self.add("D=D-1");
+                    }
+                    self.add("A=D-1");
+                    self.add("D=M");
+                    self.add(mem_segment);
+                    self.add("M=D");
                 }
-                MemorySegment::Constant => panic!("Cannot pop from Constant"),
+
+                // goto return address
+                self.add("@R6");
+                self.add("A=M");
+                self.add("0;JMP");
             }
-        }
-        OperationArgs::Add | OperationArgs::Sub | OperationArgs::And | OperationArgs::Or => {
-            address_top_stack!(asm);
-            asm.push("D=M".to_string());
-            address_top_stack!(asm);
-            match args {
-                OperationArgs::Add => asm.push("M=D+M".to_string()),
-                OperationArgs::Sub => asm.push("M=M-D".to_string()),
-                OperationArgs::And => asm.push("M=D&M".to_string()),
-                OperationArgs::Or => asm.push("M=D|M".to_string()),
-                _ => (),
-            }
-            incr_stack_pointer!(asm);
-        }
-        OperationArgs::Neg => {
-            address_top_stack!(asm);
-            asm.push("M=-M".to_string());
-            incr_stack_pointer!(asm);
-        }
-        OperationArgs::Not => {
-            address_top_stack!(asm);
-            asm.push("M=!M".to_string());
-            incr_stack_pointer!(asm);
-        }
-        OperationArgs::Eq(fn_name) | OperationArgs::Gt(fn_name) | OperationArgs::Lt(fn_name) => {
-            address_top_stack!(asm);
-            asm.push("D=M".to_string());
-            address_top_stack!(asm);
-            asm.push("D=M-D".to_string());
-            asm.push(format!("@{}.PUSH_TRUE", fn_name));
-
-            match args {
-                OperationArgs::Eq(_) => asm.push("D;JEQ".to_string()),
-                OperationArgs::Lt(_) => asm.push("D;JLT".to_string()),
-                OperationArgs::Gt(_) => asm.push("D;JGT".to_string()),
-                _ => {}
-            }
-
-            asm.push("@SP".to_string());
-            asm.push("A=M".to_string());
-            asm.push("M=0".to_string());
-            asm.push(format!("@{}.NO_OP", fn_name));
-            asm.push("0;JMP".to_string());
-
-            asm.push(format!("({}.PUSH_TRUE)", fn_name));
-            asm.push("@SP".to_string());
-            asm.push("A=M".to_string());
-            asm.push("M=-1".to_string());
-
-            asm.push(format!("({}.NO_OP)", fn_name));
-            incr_stack_pointer!(asm);
         }
     }
-}
 
-pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
-    let mut asm: Vec<String> = vec![];
-    let mut function_calls: HashMap<String, usize> = HashMap::new();
+    fn generate_operation_asm(self: &mut Self, args: &OperationArgs) {
+        match args {
+            OperationArgs::Push(mem_segment, val, filename) => {
+                match mem_segment {
+                    MemorySegment::Constant => {
+                        self.add(format!("@{}", val).as_str());
+                        self.add("D=A");
+                        self.push_d_reg_to_stack();
+                    }
+                    MemorySegment::Local
+                    | MemorySegment::Argument
+                    | MemorySegment::This
+                    | MemorySegment::That => {
+                        self.add(format!("@{}", val).as_str());
+                        self.add("D=A");
+                        self.add(mem_segment.as_asm_mnemonic().as_str());
+                        self.add("A=D+M");
+                        self.add("D=M");
+                        self.push_d_reg_to_stack();
+                    }
+                    MemorySegment::Temp => {
+                        // TEMP address range is 5..12
+                        self.add(format!("@R{}", 5 + val).as_str());
+                        self.add("D=M");
+                        self.push_d_reg_to_stack();
+                    }
+                    MemorySegment::Static => {
+                        self.add(format!("@{}.{}", filename, val).as_str());
+                        self.add("D=M");
+                        self.push_d_reg_to_stack();
+                    }
+                    MemorySegment::Pointer => {
+                        match val {
+                            0 => self.add(format!("@THIS").as_str()),
+                            1 => self.add(format!("@THAT").as_str()),
+                            _ => panic!("Pop operations on pointer allow values 0 or 1"),
+                        }
+                        self.add("D=M");
+                        self.push_d_reg_to_stack();
+                    }
+                };
+            }
+            OperationArgs::Pop(mem_segment, val, filename) => {
+                match mem_segment {
+                    MemorySegment::Local
+                    | MemorySegment::Argument
+                    | MemorySegment::This
+                    | MemorySegment::That => {
+                        self.address_top_stack();
+                        self.add("D=M");
+                        self.add("@R13");
+                        self.add("M=D");
 
-    vm_commands.iter().for_each(|vm_command| match vm_command {
-        Command::Branching(args) => generate_branching_asm(args, &mut asm),
-        Command::Function(args) => generate_function_asm(args, &mut asm, &mut function_calls),
-        Command::Operation(args) => generate_operation_asm(args, &mut asm),
-    });
+                        self.add(format!("@{}", val).as_str());
+                        self.add("D=A");
+                        self.add(mem_segment.as_asm_mnemonic().as_str());
+                        self.add("A=D+M");
+                        self.add("D=A");
+                        self.add("@R14");
+                        self.add("M=D");
+                        self.add("@R13");
+                        self.add("D=M");
+                        self.add("@R14");
+                        self.add("A=M");
+                        self.add("M=D");
+                    }
+                    MemorySegment::Temp => {
+                        self.address_top_stack();
+                        self.add("D=M");
+                        // TEMP address range is 5..12
+                        self.add(format!("@R{}", 5 + val).as_str());
+                        self.add("M=D");
+                    }
+                    MemorySegment::Static => {
+                        self.address_top_stack();
+                        self.add("D=M");
+                        self.add(format!("@{}.{}", filename, val).as_str());
+                        self.add("M=D");
+                    }
+                    MemorySegment::Pointer => {
+                        self.address_top_stack();
+                        self.add("D=M");
+                        match val {
+                            0 => self.add(format!("@THIS").as_str()),
+                            1 => self.add(format!("@THAT").as_str()),
+                            _ => panic!("Pop operations on pointer allow values 0 or 1"),
+                        }
+                        self.add("M=D");
+                    }
+                    MemorySegment::Constant => panic!("Cannot pop from Constant"),
+                }
+            }
+            OperationArgs::Add | OperationArgs::Sub | OperationArgs::And | OperationArgs::Or => {
+                self.address_top_stack();
+                self.add("D=M");
+                self.address_top_stack();
+                match args {
+                    OperationArgs::Add => self.add("M=D+M"),
+                    OperationArgs::Sub => self.add("M=M-D"),
+                    OperationArgs::And => self.add("M=D&M"),
+                    OperationArgs::Or => self.add("M=D|M"),
+                    _ => (),
+                }
+                self.incr_stack_pointer();
+            }
+            OperationArgs::Neg => {
+                self.address_top_stack();
+                self.add("M=-M");
+                self.incr_stack_pointer();
+            }
+            OperationArgs::Not => {
+                self.address_top_stack();
+                self.add("M=!M");
+                self.incr_stack_pointer();
+            }
+            OperationArgs::Eq(fn_name)
+            | OperationArgs::Gt(fn_name)
+            | OperationArgs::Lt(fn_name) => {
+                self.address_top_stack();
+                self.add("D=M");
+                self.address_top_stack();
+                self.add("D=M-D");
+                self.add(format!("@{}.PUSH_TRUE", fn_name).as_str());
 
-    asm
+                match args {
+                    OperationArgs::Eq(_) => self.add("D;JEQ"),
+                    OperationArgs::Lt(_) => self.add("D;JLT"),
+                    OperationArgs::Gt(_) => self.add("D;JGT"),
+                    _ => {}
+                }
+
+                self.add("@SP");
+                self.add("A=M");
+                self.add("M=0");
+                self.add(format!("@{}.NO_OP", fn_name).as_str());
+                self.add("0;JMP");
+
+                self.add(format!("({}.PUSH_TRUE)", fn_name).as_str());
+                self.add("@SP");
+                self.add("A=M");
+                self.add("M=-1");
+
+                self.add(format!("({}.NO_OP)", fn_name).as_str());
+                self.incr_stack_pointer();
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -332,7 +330,7 @@ mod tests {
     fn assert_commands_eq(vm_commands: Vec<Command>, expected_asm: Vec<Vec<&str>>) {
         let expected: Vec<&str> = expected_asm.into_iter().flat_map(|asm| asm).collect();
 
-        let actual = generate(vm_commands);
+        let actual = AsmGenerator::generate(vm_commands);
 
         assert_eq!(expected, actual);
     }
@@ -1112,7 +1110,7 @@ mod tests {
             Command::Function(FunctionArgs::Return),
         ];
 
-        let asm_commands = generate(vm_commands);
+        let asm_commands = AsmGenerator::generate(vm_commands);
 
         assert!(
             asm_commands
