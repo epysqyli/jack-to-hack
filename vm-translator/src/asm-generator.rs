@@ -310,7 +310,7 @@ fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
     }
 }
 
-pub fn generate_asm(vm_commands: Vec<Command>) -> Vec<String> {
+pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
     let mut asm: Vec<String> = vec![];
     let mut function_calls: HashMap<String, usize> = HashMap::new();
 
@@ -332,7 +332,7 @@ mod tests {
     fn assert_commands_eq(vm_commands: Vec<Command>, expected_asm: Vec<Vec<&str>>) {
         let expected: Vec<&str> = expected_asm.into_iter().flat_map(|asm| asm).collect();
 
-        let actual = generate_asm(vm_commands);
+        let actual = generate(vm_commands);
 
         assert_eq!(expected, actual);
     }
@@ -1112,7 +1112,7 @@ mod tests {
             Command::Function(FunctionArgs::Return),
         ];
 
-        let asm_commands = generate_asm(vm_commands);
+        let asm_commands = generate(vm_commands);
 
         assert!(
             asm_commands
