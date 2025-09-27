@@ -36,7 +36,8 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
         vm_file_paths.push(vm_path.to_path_buf());
     }
 
-    // TODO: mprove bootstrap when necessary
+    // TODO: improve bootstrap when necessary.
+    // Should @LCL, @ARG, @THIS, @THAT be initialized?
     let bootstrap_instructions = vec![
         "call Sys.init 0".to_string(),
         "label INFINITE_LOOP".to_string(),

@@ -157,8 +157,6 @@ fn generate_function_asm(
     }
 }
 
-// TODO: static variables need to be prefixed by the filename,
-// which can be extracted from the Filename.FunctionName prefix
 fn generate_operation_asm(args: &OperationArgs, asm: &mut Vec<String>) {
     match args {
         OperationArgs::Push(mem_segment, val, filename) => {
