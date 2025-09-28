@@ -59,13 +59,5 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
             .collect(),
     );
 
-    let mut asm = asm_generator::AsmGenerator::generate(commands);
-
-    // Set SP to 256 as first bootstrapping step
-    asm.insert(0, "@256".to_string());
-    asm.insert(1, "D=A".to_string());
-    asm.insert(2, "@SP".to_string());
-    asm.insert(3, "M=D".to_string());
-
-    asm
+    asm_generator::AsmGenerator::generate(commands)
 }

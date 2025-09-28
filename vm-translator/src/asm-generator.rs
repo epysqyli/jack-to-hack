@@ -19,6 +19,15 @@ impl AsmGenerator {
             function_calls: HashMap::new(),
         };
 
+        // Set SP to 256 as first bootstrapping step
+        #[cfg(not(test))]
+        {
+            asm_generator.add("@256");
+            asm_generator.add("D=A");
+            asm_generator.add("@SP");
+            asm_generator.add("M=D");
+        }
+
         vm_commands.iter().for_each(|vm_command| match vm_command {
             Command::Branching(args) => asm_generator.generate_branching_asm(args),
             Command::Function(args) => asm_generator.generate_function_asm(args),
