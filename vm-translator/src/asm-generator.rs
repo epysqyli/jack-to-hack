@@ -47,19 +47,15 @@ impl AsmGenerator {
         self.add("A=M");
     }
 
-    fn assign_d_reg_to_stack(self: &mut Self) {
-        self.add("@SP");
-        self.add("A=M");
-        self.add("M=D");
-    }
-
     fn incr_stack_pointer(self: &mut Self) {
         self.add("@SP");
         self.add("M=M+1");
     }
 
     fn push_d_reg_to_stack(self: &mut Self) {
-        self.assign_d_reg_to_stack();
+        self.add("@SP");
+        self.add("A=M");
+        self.add("M=D");
         self.incr_stack_pointer();
     }
 
