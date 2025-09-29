@@ -6,12 +6,12 @@ pub trait Hackable {
 pub struct Instruction(pub String);
 
 impl Instruction {
-	pub	fn from(s: String) -> Result<Self, String> {
-		let valid_chars = vec!['0', '1'];
+	const VALID_CHARS: [char; 2] = ['0', '1'];
 
+	pub	fn from(s: String) -> Result<Self, String> {
 		match s.len() {
 			16 => {
-				if s.chars().any(|c| !valid_chars.contains(&c)) {
+				if s.chars().any(|c| !Self::VALID_CHARS.contains(&c)) {
 					return Err("Only '0' and '1' are valid".to_string());
 				}
 
