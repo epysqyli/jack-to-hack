@@ -9,19 +9,19 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn from(string: String) -> Option<Self> {
+    pub fn from(string: String) -> Result<Self, ()> {
         if string.is_empty() {
-            return None;
+            return Err(());
         }
 
         if let Some(instruction_type) = string.chars().nth(0) {
             return match instruction_type {
-                '@' => Some(Instruction::A(string)),
-                _ => Some(Instruction::C(string)),
+                '@' => Ok(Instruction::A(string)),
+                _ => Ok(Instruction::C(string)),
             };
         }
 
-        None
+        Err(())
     }
 }
 

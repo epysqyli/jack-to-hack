@@ -60,11 +60,11 @@ impl Assembler {
 
         for op in asm_without_variables {
             match Instruction::from(op.clone()) {
-                Some(inst) => match inst.to_hack() {
+                Ok(inst) => match inst.to_hack() {
                     Ok(inst_as_hack) => hack_out.push(inst_as_hack.0),
                     Err(err) => return Err(err),
                 },
-                None => return Err(format!("Could not parse {}", op)),
+                Err(_) => return Err(format!("Could not parse {}", op)),
             }
         }
 
