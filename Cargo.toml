@@ -1,4 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["compiler", "hack-assembler", "vm-translator"]
-
+members = ["compiler", "hack-assembler", "jack-to-vm", "vm-translator"]

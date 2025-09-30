@@ -7,11 +7,16 @@ name = "compiler"
 version = "0.1.0"
 dependencies = [
  "hack-assembler",
+ "jack-to-vm",
  "vm-translator",
 ]
 
 [[package]]
 name = "hack-assembler"
+version = "0.1.0"
+
+[[package]]
+name = "jack-to-vm"
 version = "0.1.0"
 
 [[package]]
