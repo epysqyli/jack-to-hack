@@ -15,8 +15,9 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
             .as_ref()
         {
             "label" | "goto" | "if-goto" => {
-                let branching_args = BranchingArgs::from(vm_command, current_fn.clone()).unwrap();
-                commands.push(Command::Branching(branching_args));
+                commands.push(Command::Branching(
+					BranchingArgs::from(vm_command, current_fn.clone()).unwrap()
+				));
             }
             "function" => {
                 let fn_args: FunctionArgs = vm_command.try_into().unwrap();
@@ -29,7 +30,7 @@ pub fn parse(vm_commands: Vec<String>) -> Vec<Command> {
             "push" | "pop" | "add" | "sub" | "neg" | "gt" | "lt" | "eq" | "and" | "or" | "not" => {
                 commands.push(Command::Operation(
                     OperationArgs::from(vm_command, current_fn.clone()).unwrap(),
-                ))
+                ));
             }
             _ => panic!("Vm command {} cannot be parsed", vm_command),
         };
