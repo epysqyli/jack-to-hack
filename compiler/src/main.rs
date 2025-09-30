@@ -19,10 +19,7 @@ fn main() {
 
     match Assembler::new(asm_program).compile() {
         Ok(hack) => match fs::write(format!("{}.hack", output_path), hack.join("\n")) {
-            Ok(_) => {
-                let filename = vm_program_path.split("/").last().unwrap();
-                println!("{filename} compiled to hack");
-            }
+            Ok(_) => println!("Compilation to hack successful"),
             Err(err) => eprintln!("{err}"),
         },
         Err(err) => eprintln!("{err}"),
