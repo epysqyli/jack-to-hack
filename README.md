@@ -4,4 +4,5 @@ Jack is a Java-like high level language built from the ground up in the [From Na
 This repo contains several packages:
 - `hack-assembler`: an assembler from .asm to .hack machine language code
 - `vm-translator`: intermediate stack machine language translator, from .vm files to .asm
-- WIP
+- `jack-to-vm`: compilter from Jack to intermediate VM (WIP)
+
