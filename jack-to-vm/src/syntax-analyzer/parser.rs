@@ -60,13 +60,13 @@ pub fn parse(tokens: Vec<Token>) {
     let mut index = 0;
     if let Token::Keyword(val) = &tokens[index] {
         if val.as_str() == "class" {
-            eval_class_rule(&tokens, &mut index);
+            eval_class(&tokens, &mut index);
         }
     }
 }
 
 /* 'class' className '{' classVarDec* subroutineDec* '}' */
-fn eval_class_rule(tokens: &Vec<Token>, index: &mut usize) {
+fn eval_class(tokens: &Vec<Token>, index: &mut usize) {
     println!("<class>");
     println!("<keyword>{}</keyword>", &tokens[*index]);
 
@@ -77,14 +77,14 @@ fn eval_class_rule(tokens: &Vec<Token>, index: &mut usize) {
     println!("<symbol>{}</symbol>", &tokens[*index]);
 
     *index += 1;
-    eval_class_var_dec_or_subroutine_dec(tokens, index);
+    eval_class_var_dec_and_subroutine_dec(tokens, index);
 
     println!("<symbol>{}</symbol>", &tokens[*index]);
     println!("</class>");
 }
 
-/* classVarDec and subroutineDec can occur multiple times */
-fn eval_class_var_dec_or_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
+/* classVarDec and subroutineDec can occur multiple times within a classRule */
+fn eval_class_var_dec_and_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
     match &tokens[*index] {
         Token::Keyword(val) => match val.as_str() {
             "static" | "field" => eval_class_var_dec(tokens, index),
@@ -94,10 +94,14 @@ fn eval_class_var_dec_or_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) 
         _ => {}
     }
 
+    if *index + 1 == tokens.len() {
+        return
+    }
+
     *index += 1;
     if let Token::Keyword(val) = &tokens[*index] {
         if ["static", "field", "constructor", "function", "method"].contains(&val.as_str()) {
-            eval_class_var_dec_or_subroutine_dec(tokens, index);
+            eval_class_var_dec_and_subroutine_dec(tokens, index);
         }
     }
 }
@@ -173,8 +177,6 @@ fn eval_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
 
     *index += 1;
     println!("<symbol>{}</symbol>", &tokens[*index]);
-    *index += 1;
-    println!("<symbol>{}</symbol>", &tokens[*index]);
     println!("</subroutineDec>");
 }
 
@@ -238,16 +240,27 @@ fn eval_class_name(tokens: &Vec<Token>, index: &mut usize) {
 /* '{' varDec* statements '}' */
 fn eval_subroutine_body(tokens: &Vec<Token>, index: &mut usize) {
     println!("<subroutineBody>");
+    eval_var_dec_and_statements(tokens, index);
+    println!("</subroutineBody>");
+}
 
+/* varDec and statements can occur multiple times within a subroutineBody */
+fn eval_var_dec_and_statements(tokens: &Vec<Token>, index: &mut usize) {
     match &tokens[*index] {
         Token::Keyword(val) => match val.as_str() {
             "var" => eval_var_dec(tokens, index),
-            _ => eval_statements(tokens, index),
+            "let" | "if" | "do" | "while" | "return" => eval_statements(tokens, index),
+            _ => {}
         },
-        _ => { /* no rule */ }
+        _ => {}
     }
 
-    println!("</subroutineBody>");
+    *index += 1;
+    if let Token::Keyword(val) = &tokens[*index] {
+        if ["var", "let", "if", "do", "while", "return"].contains(&val.as_str()) {
+            eval_var_dec_and_statements(tokens, index);
+        }
+    }
 }
 
 /* 'var' type varName (',' varName)* ';' */
@@ -261,13 +274,18 @@ fn eval_var_dec(tokens: &Vec<Token>, index: &mut usize) {
     eval_var_name(tokens, index);
 
     *index += 1;
-    match &tokens[*index] {
-        Token::Symbol(val) => match val.as_str() {
-            "," => eval_var_dec(tokens, index),
-            ";" => println!("<symbol>{}</symbol>", val),
-            _ => { /* rule error */ }
-        },
-        _ => { /* rule error */ }
+    while let Token::Symbol(val) = &tokens[*index] {
+        if val == ";" {
+            println!("<symbol>{}</symbol>", val);
+            break;
+        }
+
+        println!("<symbol>{}</symbol>", val);
+        if let Token::Symbol(_) = &tokens[*index] {
+            *index += 1;
+            eval_var_name(tokens, index);
+            *index += 1;
+        }
     }
 
     println!("</varDec>");
@@ -312,12 +330,20 @@ fn eval_return_statement(tokens: &Vec<Token>, index: &mut usize) {
     println!("<returnStatement>");
     println!("<keyword>{}</keyword>", &tokens[*index]);
 
-    match &tokens[*index + 1] {
-        Token::Symbol(_) => {}
+    *index += 1;
+    match &tokens[*index] {
+        Token::Symbol(_) => println!("<symbol>{}</symbol>", &tokens[*index]),
         _ => { /* implement eval_expression */ }
     }
 
     println!("</returnStatement>");
+}
+
+/* 'if' '(' expression ')' '{' statements '}' */
+fn eval_if_statement(tokens: &Vec<Token>, index: &mut usize) {
+    println!("<ifStatement>");
+    // TODO: implement
+    println!("</ifStatement>");
 }
 
 #[cfg(test)]
@@ -336,24 +362,27 @@ mod tests {
             Identifier("Test".to_string()),
             Symbol("{".to_string()),
             //
-            // function void test() { return; }
+            // function void test() {
             Keyword("function".to_string()),
             Keyword("void".to_string()),
             Identifier("test".to_string()),
             Symbol("(".to_string()),
             Symbol(")".to_string()),
             Symbol("{".to_string()),
-            Keyword("return".to_string()),
-            Symbol(";".to_string()),
-            Symbol("}".to_string()),
             //
-            // function void anotherTest() { return; }
-            Keyword("function".to_string()),
-            Keyword("void".to_string()),
-            Identifier("anotherTest".to_string()),
-            Symbol("(".to_string()),
-            Symbol(")".to_string()),
-            Symbol("{".to_string()),
+            // var int localVar;
+            Keyword("var".to_string()),
+            Keyword("int".to_string()),
+            Identifier("localVar".to_string()),
+            Symbol(";".to_string()),
+            //
+            // var char anotherLocalVar;
+            Keyword("var".to_string()),
+            Keyword("char".to_string()),
+            Identifier("anotherLocalVar".to_string()),
+            Symbol(";".to_string()),
+            //
+            // return; }
             Keyword("return".to_string()),
             Symbol(";".to_string()),
             Symbol("}".to_string()),
