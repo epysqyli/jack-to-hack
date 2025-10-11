@@ -70,19 +70,19 @@ fn eval_rule(tokens: &Vec<Token>, index: &mut usize) {
         }
     }
 
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
 }
 
 /* 'class' className '{' classVarDec* subroutineDec* '}' */
 fn eval_class_rule(tokens: &Vec<Token>, index: &mut usize) {
     println!("<class>");
-    println!("<keyword>{:?}</keyword>", &tokens[*index]);
+    println!("<keyword>{}</keyword>", &tokens[*index]);
 
     *index += 1;
     eval_class_name(tokens, index);
 
     *index += 1;
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
 
     *index += 1;
     match &tokens[*index] {
@@ -97,14 +97,14 @@ fn eval_class_rule(tokens: &Vec<Token>, index: &mut usize) {
     }
 
     *index += 1;
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
     println!("</class>");
 }
 
 /* ('static'|'field') type varName (',' varName)* ';' */
 fn eval_class_var_dec(tokens: &Vec<Token>, index: &mut usize) {
     println!("<classVarDec>");
-    println!("<keyword>{:?}</keyword>", &tokens[*index]);
+    println!("<keyword>{}</keyword>", &tokens[*index]);
 
     *index += 1;
     eval_type(tokens, index);
@@ -130,12 +130,12 @@ fn eval_class_var_dec(tokens: &Vec<Token>, index: &mut usize) {
 /* ('constructor'|'function'|'method') ('void'|type) subroutineName '(' parameterList ')' subroutineBody */
 fn eval_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
     println!("<subroutineDec>");
-    println!("<keyword>{:?}</keyword>", &tokens[*index]);
+    println!("<keyword>{}</keyword>", &tokens[*index]);
 
     *index += 1;
     match &tokens[*index] {
         Token::Keyword(val) => match val.as_str() {
-            "void" => println!("<keyword>{:?}</keyword>", val),
+            "void" => println!("<keyword>{}</keyword>", val),
             "int" | "char" | "boolean" => eval_type(tokens, index),
             _ => { /* no rule */ }
         },
@@ -150,26 +150,26 @@ fn eval_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
     }
 
     *index += 1;
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
 
     *index += 1;
     match &tokens[*index] {
-        Token::Symbol(val) => println!("<symbol>{:?}</symbol>", val),
+        Token::Symbol(val) => println!("<symbol>{}</symbol>", val),
         _ => {
             eval_parameter_list(tokens, index);
             *index += 1;
-            println!("<symbol>{:?}</symbol>", &tokens[*index]);
+            println!("<symbol>{}</symbol>", &tokens[*index]);
         }
     }
 
     *index += 1;
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
 
     *index += 1;
     eval_subroutine_body(tokens, index);
 
     *index += 1;
-    println!("<symbol>{:?}</symbol>", &tokens[*index]);
+    println!("<symbol>{}</symbol>", &tokens[*index]);
     println!("</subroutineDec>");
 }
 
@@ -179,7 +179,7 @@ fn eval_type(tokens: &Vec<Token>, index: &mut usize) {
 
     match &tokens[*index] {
         Token::Keyword(val) => match val.as_str() {
-            "int" | "char" | "boolean" => println!("<keyword>{:?}</keyword>", val),
+            "int" | "char" | "boolean" => println!("<keyword>{}</keyword>", val),
             _ => { /* no rule */ }
         },
         Token::Identifier(_) => eval_class_name(tokens, index),
@@ -192,7 +192,7 @@ fn eval_type(tokens: &Vec<Token>, index: &mut usize) {
 /* identifier */
 fn eval_subroutine_name(tokens: &Vec<Token>, index: &mut usize) {
     println!("<subroutineName>");
-    println!("<identifier>{:?}</identifier>", &tokens[*index]);
+    println!("<identifier>{}</identifier>", &tokens[*index]);
     println!("</subroutineName>");
 }
 
@@ -219,14 +219,14 @@ fn eval_parameter_list(tokens: &Vec<Token>, index: &mut usize) {
 /* identifier */
 fn eval_var_name(tokens: &Vec<Token>, index: &mut usize) {
     println!("<varName>");
-    println!("<identifier>{:?}</identifier>", &tokens[*index]);
+    println!("<identifier>{}</identifier>", &tokens[*index]);
     println!("</varName>");
 }
 
 /* identifier */
 fn eval_class_name(tokens: &Vec<Token>, index: &mut usize) {
     println!("<className>");
-    println!("<identifier>{:?}</identifier>", &tokens[*index]);
+    println!("<identifier>{}</identifier>", &tokens[*index]);
     println!("</className>");
 }
 
@@ -248,7 +248,7 @@ fn eval_subroutine_body(tokens: &Vec<Token>, index: &mut usize) {
 /* 'var' type varName (',' varName)* ';' */
 fn eval_var_dec(tokens: &Vec<Token>, index: &mut usize) {
     println!("<varDec>");
-    println!("<keyword>{:?}</keyword>", &tokens[*index]);
+    println!("<keyword>{}</keyword>", &tokens[*index]);
 
     *index += 1;
     eval_type(tokens, index);
@@ -259,7 +259,7 @@ fn eval_var_dec(tokens: &Vec<Token>, index: &mut usize) {
     match &tokens[*index] {
         Token::Symbol(val) => match val.as_str() {
             "," => eval_var_dec(tokens, index),
-            ";" => println!("<symbol>{:?}</symbol>", val),
+            ";" => println!("<symbol>{}</symbol>", val),
             _ => { /* rule error */ }
         },
         _ => { /* rule error */ }
@@ -305,7 +305,7 @@ fn eval_statement(tokens: &Vec<Token>, index: &mut usize) {
 /* 'return' expression? ';' */
 fn eval_return_statement(tokens: &Vec<Token>, index: &mut usize) {
     println!("<returnStatement>");
-    println!("<keyword>{:?}</keyword>", &tokens[*index]);
+    println!("<keyword>{}</keyword>", &tokens[*index]);
     match &tokens[*index + 1] {
         Token::Symbol(_) => {}
         _ => { /* implement eval_expression */ }

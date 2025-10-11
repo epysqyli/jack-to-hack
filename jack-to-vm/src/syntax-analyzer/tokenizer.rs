@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Keyword(String),
@@ -5,6 +7,18 @@ pub enum Token {
     Identifier(String),
     StrConst(String),
     IntConst(String),
+}
+
+impl Display for Token {
+    fn fmt(self: &Self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Keyword(val) => write!(f, "{val}"),
+            Self::Symbol(val) => write!(f, "{val}"),
+            Self::Identifier(val) => write!(f, "{val}"),
+            Self::StrConst(val) => write!(f, "{val}"),
+            Self::IntConst(val) => write!(f, "{val}"),
+        }
+    }
 }
 
 pub fn tokenize(input: &str) -> Vec<Token> {
