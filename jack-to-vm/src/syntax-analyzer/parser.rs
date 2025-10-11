@@ -69,8 +69,6 @@ fn eval_rule(tokens: &Vec<Token>, index: &mut usize) {
             eval_class_rule(tokens, index);
         }
     }
-
-    println!("<symbol>{}</symbol>", &tokens[*index]);
 }
 
 /* 'class' className '{' classVarDec* subroutineDec* '}' */
@@ -85,20 +83,29 @@ fn eval_class_rule(tokens: &Vec<Token>, index: &mut usize) {
     println!("<symbol>{}</symbol>", &tokens[*index]);
 
     *index += 1;
+    eval_class_var_dec_or_subroutine_dec(tokens, index);
+
+    println!("<symbol>{}</symbol>", &tokens[*index]);
+    println!("</class>");
+}
+
+/* classVarDec and subroutineDec can occur multiple times */
+fn eval_class_var_dec_or_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
     match &tokens[*index] {
-        // TODO: classVarDec and subroutineDec can appear one after the
-        // other multiple times so it cannot be matched against just once
         Token::Keyword(val) => match val.as_str() {
             "static" | "field" => eval_class_var_dec(tokens, index),
             "constructor" | "function" | "method" => eval_subroutine_dec(tokens, index),
-            _ => { /* no rule */ }
+            _ => {}
         },
-        _ => { /* no rule */ }
+        _ => {}
     }
 
     *index += 1;
-    println!("<symbol>{}</symbol>", &tokens[*index]);
-    println!("</class>");
+    if let Token::Keyword(val) = &tokens[*index] {
+        if ["static", "field", "constructor", "function", "method"].contains(&val.as_str()) {
+            eval_class_var_dec_or_subroutine_dec(tokens, index);
+        }
+    }
 }
 
 /* ('static'|'field') type varName (',' varName)* ';' */
@@ -112,16 +119,18 @@ fn eval_class_var_dec(tokens: &Vec<Token>, index: &mut usize) {
     eval_var_name(tokens, index);
 
     *index += 1;
-    match &tokens[*index] {
-        Token::Symbol(val) => match val.as_str() {
-            ";" => println!("<symbol>{val:?}</symbol>"),
-            "," => {
-                println!("<symbol>{val:?}</symbol>");
-                eval_var_dec(tokens, index);
-            }
-            _ => { /* no rule */ }
-        },
-        _ => { /* no rule */ }
+    while let Token::Symbol(val) = &tokens[*index] {
+        if val == ";" {
+            println!("<symbol>{}</symbol>", val);
+            break;
+        }
+
+        println!("<symbol>{}</symbol>", val);
+        if let Token::Symbol(_) = &tokens[*index] {
+            *index += 1;
+            eval_var_name(tokens, index);
+            *index += 1;
+        }
     }
 
     println!("</classVarDec>");
@@ -168,6 +177,8 @@ fn eval_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
     *index += 1;
     eval_subroutine_body(tokens, index);
 
+    *index += 1;
+    println!("<symbol>{}</symbol>", &tokens[*index]);
     *index += 1;
     println!("<symbol>{}</symbol>", &tokens[*index]);
     println!("</subroutineDec>");
@@ -306,10 +317,12 @@ fn eval_statement(tokens: &Vec<Token>, index: &mut usize) {
 fn eval_return_statement(tokens: &Vec<Token>, index: &mut usize) {
     println!("<returnStatement>");
     println!("<keyword>{}</keyword>", &tokens[*index]);
+
     match &tokens[*index + 1] {
         Token::Symbol(_) => {}
         _ => { /* implement eval_expression */ }
     }
+
     println!("</returnStatement>");
 }
 
@@ -321,25 +334,42 @@ mod tests {
     };
 
     #[test]
-    fn parse_minimal_program() {
+    fn parse_test_class() {
         let token_stream: Vec<Token> = vec![
+            //
+            // class Test {
             Keyword("class".to_string()),
-            Identifier("Main".to_string()),
+            Identifier("Test".to_string()),
             Symbol("{".to_string()),
+            //
+            // function void test() { return; }
             Keyword("function".to_string()),
             Keyword("void".to_string()),
-            Identifier("main".to_string()),
+            Identifier("test".to_string()),
             Symbol("(".to_string()),
             Symbol(")".to_string()),
             Symbol("{".to_string()),
             Keyword("return".to_string()),
             Symbol(";".to_string()),
             Symbol("}".to_string()),
+            //
+            // function void anotherTest() { return; }
+            Keyword("function".to_string()),
+            Keyword("void".to_string()),
+            Identifier("anotherTest".to_string()),
+            Symbol("(".to_string()),
+            Symbol(")".to_string()),
+            Symbol("{".to_string()),
+            Keyword("return".to_string()),
+            Symbol(";".to_string()),
+            Symbol("}".to_string()),
+            //
+            // }
             Symbol("}".to_string()),
         ];
 
         println!();
-        let _ = parse(token_stream);
+        parse(token_stream);
         println!();
         assert!(true);
     }
