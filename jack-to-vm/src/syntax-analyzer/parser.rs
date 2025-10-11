@@ -58,15 +58,9 @@ pub fn parse(tokens: Vec<Token>) {
     // - think about in-memory derivation tree type only when the grammar logic is implemented
     //   - print to stdout for the moment
     let mut index = 0;
-    eval_rule(&tokens, &mut index);
-}
-
-fn eval_rule(tokens: &Vec<Token>, index: &mut usize) {
-    let token = &tokens[*index];
-
-    if let Token::Keyword(val) = token {
+    if let Token::Keyword(val) = &tokens[index] {
         if val.as_str() == "class" {
-            eval_class_rule(tokens, index);
+            eval_class_rule(&tokens, &mut index);
         }
     }
 }
