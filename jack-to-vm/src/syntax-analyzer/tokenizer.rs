@@ -14,7 +14,7 @@ impl Display for Token {
         match self {
             Self::Keyword(val) => write!(f, "<keyword>{val}</keyword>"),
             Self::Symbol(val) => write!(f, "<symbol>{val}</symbol>"),
-            Self::Identifier(val) => write!(f, "<identifier>{val}</identifier>"),
+            Self::Identifier(val) => write!(f, "{val}"),
             Self::StrConst(val) => write!(f, "<strConst>{val}</strConst>"),
             Self::IntConst(val) => write!(f, "<intConst>{val}</intConst>"),
         }

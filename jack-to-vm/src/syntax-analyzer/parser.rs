@@ -52,11 +52,6 @@ use crate::syntax_analyzer::tokenizer::Token;
 /// </class>
 #[allow(dead_code)]
 pub fn parse(tokens: Vec<Token>) {
-    // TODO:
-    // - make sure qualifiers are evaluated properly for each rule: * ? |
-    // - make sure the index is advanced correctly and in a consistent way across rules
-    // - think about in-memory derivation tree type only when the grammar logic is implemented
-    //   - print to stdout for the moment
     let mut index = 0;
     if let Token::Keyword(val) = &tokens[index] {
         if val.as_str() == "class" {
@@ -451,7 +446,6 @@ fn eval_expression(tokens: &Vec<Token>, index: &mut usize) {
     eval_term(tokens, index);
 
     while let Token::Symbol(val) = &tokens[*index + 1] {
-        // TODO: introduce helper functions such as `is_op`, `is_term` etc etc?
         if ["+", "-", "*", "/", "&", "|", "<", ">", "="].contains(&val.as_str()) {
             *index += 1;
             eval_op(tokens, index);
@@ -498,7 +492,6 @@ fn eval_term(tokens: &Vec<Token>, index: &mut usize) {
             /* varName | varName '[' expression ']' | subroutineCall */
             match &tokens[*index + 1] {
                 Token::Symbol(val) => match val.as_str() {
-                    // TODO: is subroutineCall evaluated properly here?
                     "(" | "." => eval_subroutine_call(tokens, index),
                     "[" => {
                         eval_var_name(tokens, index);
@@ -510,11 +503,10 @@ fn eval_term(tokens: &Vec<Token>, index: &mut usize) {
                         println!("{}", &tokens[*index]);
                     }
                     _ => {
-                        /* TODO: no rule ? */
                         eval_var_name(tokens, index);
                     }
                 },
-                _ => { /* TODO: no rule ? */ }
+                _ => { /* no rule */ }
             }
         }
     }
@@ -618,33 +610,34 @@ mod tests {
     fn parse_test_class() {
         let token_stream: Vec<Token> = vec![
             //
-            // class Test {
+            // class Main {
             Keyword("class".to_string()),
-            Identifier("Test".to_string()),
+            Identifier("Main".to_string()),
             Symbol("{".to_string()),
             //
             // function int test() {
             Keyword("function".to_string()),
-            Keyword("int".to_string()),
-            Identifier("test".to_string()),
+            Keyword("void".to_string()),
+            Identifier("Main".to_string()),
             Symbol("(".to_string()),
             Symbol(")".to_string()),
             Symbol("{".to_string()),
             //
-            // do AnotherClass.execute(1 + 2);
-            Keyword("do".to_string()),
-            Identifier("AnotherClass".to_string()),
-            Symbol(".".to_string()),
-            Identifier("execute".to_string()),
+            // while (count < 100) { let count = count + 1; }
+            Keyword("while".to_string()),
             Symbol("(".to_string()),
-            // 
-            // YetAnotherClass.callFn() ) ;
-            Identifier("YetAnotherClass".to_string()),
-            Symbol(".".to_string()),
-            Identifier("callFn".to_string()),
-            Symbol("(".to_string()),
+            Identifier("count".to_string()),
+            Symbol("<".to_string()),
+            IntConst("100".to_string()),
             Symbol(")".to_string()),
-            Symbol(")".to_string()),
+            Symbol("{".to_string()),
+            Keyword("let".to_string()),
+            Identifier("count".to_string()),
+            Symbol("=".to_string()),
+            Identifier("count".to_string()),
+            Symbol("+".to_string()),
+            IntConst("1".to_string()),
+            Symbol("}".to_string()),
             Symbol(";".to_string()),
             //
             // return ; }
