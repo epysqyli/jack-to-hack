@@ -1,0 +1,5 @@
+class Another {
+    function void execute() {
+        return;
+    }
+}

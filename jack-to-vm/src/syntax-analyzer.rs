@@ -3,18 +3,11 @@ mod parser;
 #[path = "syntax-analyzer/tokenizer.rs"]
 mod tokenizer;
 
-pub fn run(jack_classes: Vec<String>) -> Vec<String> {
-    let tokenized_classes: Vec<Vec<tokenizer::Token>> = jack_classes
-        .iter()
-        .map(|jc| tokenizer::tokenize(jc))
-        .collect();
+pub fn run(jack_class: String) -> String {
+    let tokens = tokenizer::tokenize(&jack_class);
+    let derivation_tree = parser::Parser::parse(tokens);
 
-    let xml_classes: Vec<String> = tokenized_classes
-        .into_iter()
-        .map(|tc| parser::Parser::parse(tc))
-        .collect();
-
-    xml_classes
+    derivation_tree
 }
 
 #[cfg(test)]
@@ -59,7 +52,7 @@ mod tests {
 
         assert_eq!(
             expected.replace(" ", "").replace("\n", ""),
-            super::run(vec![input_program.into()])[0]
+            super::run(input_program.into())
         );
     }
 }
