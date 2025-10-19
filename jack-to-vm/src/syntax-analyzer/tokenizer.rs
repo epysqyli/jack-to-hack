@@ -22,7 +22,7 @@ impl Display for Token {
                     _ => write!(f, "<symbol>{val}</symbol>")
                 }
             },
-            Self::Identifier(val) => write!(f, "{val}"),
+            Self::Identifier(val) => write!(f, "<identifier>{val}</identifier>"),
             Self::StrConst(val) => write!(f, "<strConst>{val}</strConst>"),
             Self::IntConst(val) => write!(f, "<intConst>{val}</intConst>"),
         }

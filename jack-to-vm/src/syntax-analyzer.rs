@@ -25,23 +25,21 @@ mod tests {
         let expected = r#"
             <class>
                 <keyword>class</keyword>
-                <className>Main</className>
+                <identifier>Main</identifier>
                 <symbol>{</symbol>
                 <subroutineDec>
                     <keyword>function</keyword>
                     <keyword>void</keyword>
-                    <subroutineName>main</subroutineName>
+                    <identifier>main</identifier>
                     <symbol>(</symbol>
                     <symbol>)</symbol>
                     <symbol>{</symbol>
                     <subroutineBody>
                         <statements>
-                            <statement>
-                                <returnStatement>
-                                    <keyword>return</keyword>
-                                    <symbol>;</symbol>
-                                </returnStatement>
-                            </statement>
+                            <returnStatement>
+                                <keyword>return</keyword>
+                                <symbol>;</symbol>
+                            </returnStatement>
                         </statements>
                     </subroutineBody>
                     <symbol>}</symbol>

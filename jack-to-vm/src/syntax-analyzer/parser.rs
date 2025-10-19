@@ -22,32 +22,28 @@ use std::fmt::Write;
 /// ... should evaluate to the following derivation tree:
 ///
 /// <class>
-///   <keyword> class </keyword>
-///   <className> Main </className>
-///   <symbol> { </symbol>
-///   <subroutineDec>
-///     <keyword> function </keyword>
-///     <keyword> void </keyword>
-///     <subroutineName> main </subroutineName>
-///     <symbol> ( </symbol>
-///     <parameterList></parameterList>
-///     <symbol> ) </symbol>
-///     <subroutineBody>
-///       <symbol> { </symbol>
-///       <statements>
-///           <statement>
-///             <returnStatement>
-///                 <keyword> return </keyword>
-///                 <symbol> ; </symbol>
-///             </returnStatement>
-///           </statement>
-///       </statements>
-///       <symbol> } </symbol>
-///     </subroutineBody>
-///   </subroutineDec>
-///   <symbol> } </symbol>
+///     <keyword>class</keyword>
+///     <identifier>Main</identifier>
+///     <symbol>{</symbol>
+///     <subroutineDec>
+///         <keyword>function</keyword>
+///         <keyword>void</keyword>
+///         <identifier>main</identifier>
+///         <symbol>(</symbol>
+///         <symbol>)</symbol>
+///         <symbol>{</symbol>
+///             <subroutineBody>
+///                 <statements>
+///                     <returnStatement>
+///                         <keyword>return</keyword>
+///                         <symbol>;</symbol>
+///                     </returnStatement>
+///                 </statements>
+///             </subroutineBody>
+///         <symbol>}</symbol>
+///     </subroutineDec>
+///     <symbol>}</symbol>
 /// </class>
-
 pub struct Parser {
     index: usize,
     tokens: Vec<Token>,
@@ -187,8 +183,6 @@ impl Parser {
 
     /* 'int'|'char'|'boolean'|className */
     fn eval_type(self: &mut Self) {
-        self.append(Some("<type>"));
-
         match self.current() {
             Token::Keyword(val) => match val.as_str() {
                 "int" | "char" | "boolean" => self.append(None),
@@ -197,15 +191,11 @@ impl Parser {
             Token::Identifier(_) => self.eval_class_name(),
             _ => { /* no rule */ }
         }
-
-        self.append(Some("</type>"));
     }
 
     /* identifier */
     fn eval_subroutine_name(self: &mut Self) {
-        self.append(Some("<subroutineName>"));
         self.append(None);
-        self.append(Some("</subroutineName>"));
     }
 
     /* ( (type varName) (',' type varName)* )? */
@@ -232,16 +222,12 @@ impl Parser {
 
     /* identifier */
     fn eval_var_name(self: &mut Self) {
-        self.append(Some("<varName>"));
         self.append(None);
-        self.append(Some("</varName>"));
     }
 
     /* identifier */
     fn eval_class_name(self: &mut Self) {
-        self.append(Some("<className>"));
         self.append(None);
-        self.append(Some("</className>"));
     }
 
     /* '{' varDec* statements '}' */
@@ -312,8 +298,6 @@ impl Parser {
 
     /* letStatement|ifStatement|whileStatement|doStatement|returnStatement */
     fn eval_statement(self: &mut Self) {
-        self.append(Some("<statement>"));
-
         if let Token::Keyword(val) = self.current() {
             match val.as_str() {
                 "return" => self.eval_return_statement(),
@@ -324,8 +308,6 @@ impl Parser {
                 _ => { /* no rule */ }
             }
         }
-
-        self.append(Some("</statement>"));
     }
 
     /* 'return' expression? ';' */
@@ -538,8 +520,6 @@ impl Parser {
      * (className | varName) '.' subroutineName '(' expressionList ')'
      */
     fn eval_subroutine_call(self: &mut Self) {
-        self.append(Some("<subroutineCall>"));
-
         if let Token::Symbol(val) = self.next() {
             if val.as_str() == "." {
                 if let Token::Identifier(val) = self.current() {
@@ -566,8 +546,6 @@ impl Parser {
 
         self.advance();
         self.append(None);
-
-        self.append(Some("</subroutineCall>"));
     }
 
     /* '+' | '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=' */
@@ -649,6 +627,56 @@ mod tests {
     use super::Token::{self, *};
 
     #[test]
+    fn parse_minimal_class() {
+        let expected = r#"
+            <class>
+                <keyword>class</keyword>
+                <identifier>Main</identifier>
+                <symbol>{</symbol>
+                <subroutineDec>
+                    <keyword>function</keyword>
+                    <keyword>void</keyword>
+                    <identifier>main</identifier>
+                    <symbol>(</symbol>
+                    <symbol>)</symbol>
+                    <symbol>{</symbol>
+                    <subroutineBody>
+                        <statements>
+                            <returnStatement>
+                                <keyword>return</keyword>
+                                <symbol>;</symbol>
+                            </returnStatement>
+                        </statements>
+                    </subroutineBody>
+                    <symbol>}</symbol>
+                </subroutineDec>
+                <symbol>}</symbol>
+            </class>
+        "#;
+
+        let tokens = vec![
+            Keyword("class".to_string()),
+            Identifier("Main".to_string()),
+            Symbol("{".to_string()),
+            Keyword("function".to_string()),
+            Keyword("void".to_string()),
+            Identifier("main".to_string()),
+            Symbol("(".to_string()),
+            Symbol(")".to_string()),
+            Symbol("{".to_string()),
+            Keyword("return".to_string()),
+            Symbol(";".to_string()),
+            Symbol("}".to_string()),
+            Symbol("}".to_string()),
+        ];
+
+        assert_eq!(
+            expected.replace("\n", "").replace(" ", ""),
+            super::Parser::parse(tokens)
+        );
+    }
+
+    #[test]
     fn parse_while_statement() {
         let token_stream: Vec<Token> = vec![
             //
@@ -694,54 +722,48 @@ mod tests {
         let expected = r#"
             <class>
                 <keyword>class</keyword>
-                <className>Main</className>
+                <identifier>Main</identifier>
                 <symbol>{</symbol>
                 <subroutineDec>
                     <keyword>function</keyword>
                     <keyword>void</keyword>
-                    <subroutineName>main</subroutineName>
+                    <identifier>main</identifier>
                     <symbol>(</symbol>
                     <symbol>)</symbol>
                     <symbol>{</symbol>
                     <subroutineBody>
                         <statements>
-                            <statement>
-                                <whileStatement>
-                                    <keyword>while</keyword>
-                                    <symbol>(</symbol>
-                                    <expression>
-                                        <term><varName>count</varName></term>
-                                        <op><symbol>&lt;</symbol></op>
-                                        <term><intConst>100</intConst></term>
-                                    </expression>
-                                    <symbol>)</symbol>
-                                    <symbol>{</symbol>
-                                    <statements>
-                                        <statement>
-                                            <letStatement>
-                                                <keyword>let</keyword>
-                                                <varName>count</varName>
-                                                <symbol>=</symbol>
-                                                <expression>
-                                                    <term><varName>count</varName></term>
-                                                    <op><symbol>+</symbol></op>
-                                                    <term><intConst>1</intConst></term>
-                                                </expression>
-                                                <symbol>;</symbol>
-                                            </letStatement>
-                                        </statement>
-                                    </statements>
-                                    <symbol>}</symbol>
-                                </whileStatement>
-                            </statement>
+                            <whileStatement>
+                                <keyword>while</keyword>
+                                <symbol>(</symbol>
+                                <expression>
+                                    <term><identifier>count</identifier></term>
+                                    <op><symbol>&lt;</symbol></op>
+                                    <term><intConst>100</intConst></term>
+                                </expression>
+                                <symbol>)</symbol>
+                                <symbol>{</symbol>
+                                <statements>
+                                    <letStatement>
+                                        <keyword>let</keyword>
+                                        <identifier>count</identifier>
+                                        <symbol>=</symbol>
+                                        <expression>
+                                            <term><identifier>count</identifier></term>
+                                            <op><symbol>+</symbol></op>
+                                            <term><intConst>1</intConst></term>
+                                        </expression>
+                                        <symbol>;</symbol>
+                                    </letStatement>
+                                </statements>
+                                <symbol>}</symbol>
+                            </whileStatement>
                         </statements>
                         <statements>
-                            <statement>
-                                <returnStatement>
-                                    <keyword>return</keyword>
-                                    <symbol>;</symbol>
-                                </returnStatement>
-                            </statement>
+                            <returnStatement>
+                                <keyword>return</keyword>
+                                <symbol>;</symbol>
+                            </returnStatement>
                         </statements>
                     </subroutineBody>
                     <symbol>}</symbol>
