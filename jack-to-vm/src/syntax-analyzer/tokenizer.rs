@@ -13,7 +13,15 @@ impl Display for Token {
     fn fmt(self: &Self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Keyword(val) => write!(f, "<keyword>{val}</keyword>"),
-            Self::Symbol(val) => write!(f, "<symbol>{val}</symbol>"),
+            Self::Symbol(val) => {
+                match val.as_str() {
+                    "<" => write!(f, "<symbol>&lt;</symbol>"),
+                    ">" => write!(f, "<symbol>&gt;</symbol>"),
+                    "\"" => write!(f, "<symbol>&quot;</symbol>"),
+                    "&" => write!(f, "<symbol>&amp;</symbol>"),
+                    _ => write!(f, "<symbol>{val}</symbol>")
+                }
+            },
             Self::Identifier(val) => write!(f, "{val}"),
             Self::StrConst(val) => write!(f, "<strConst>{val}</strConst>"),
             Self::IntConst(val) => write!(f, "<intConst>{val}</intConst>"),

@@ -711,7 +711,7 @@ mod tests {
                                     <symbol>(</symbol>
                                     <expression>
                                         <term><varName>count</varName></term>
-                                        <op><symbol><</symbol></op>
+                                        <op><symbol>&lt;</symbol></op>
                                         <term><intConst>100</intConst></term>
                                     </expression>
                                     <symbol>)</symbol>
