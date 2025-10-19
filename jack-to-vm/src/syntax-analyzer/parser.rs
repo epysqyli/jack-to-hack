@@ -1,4 +1,5 @@
 use crate::syntax_analyzer::tokenizer::Token;
+use std::fmt::Write;
 
 /// Tokens -> recursive application of grammar rules -> derivation tree
 ///
@@ -22,16 +23,12 @@ use crate::syntax_analyzer::tokenizer::Token;
 ///
 /// <class>
 ///   <keyword> class </keyword>
-///   <className>
-///     <identifier> Main </identifier>
-///   </className>
+///   <className> Main </className>
 ///   <symbol> { </symbol>
 ///   <subroutineDec>
 ///     <keyword> function </keyword>
 ///     <keyword> void </keyword>
-///     <subroutineName>
-///       <identifier> main </identifier>
-///     </subroutineName>
+///     <subroutineName> main </subroutineName>
 ///     <symbol> ( </symbol>
 ///     <parameterList></parameterList>
 ///     <symbol> ) </symbol>
@@ -50,564 +47,609 @@ use crate::syntax_analyzer::tokenizer::Token;
 ///   </subroutineDec>
 ///   <symbol> } </symbol>
 /// </class>
-#[allow(dead_code)]
-pub fn parse(tokens: Vec<Token>) {
-    let mut index = 0;
-    if let Token::Keyword(val) = &tokens[index] {
-        if val.as_str() == "class" {
-            eval_class(&tokens, &mut index);
-        }
-    }
+
+pub struct Parser {
+    index: usize,
+    tokens: Vec<Token>,
+    output: String,
 }
 
-/* ===================================== */
-/* ========= Program Structure ========= */
-/* ===================================== */
+impl Parser {
+    pub fn parse(tokens: Vec<Token>) -> String {
+        let mut parser = Self {
+            index: 0,
+            tokens: tokens,
+            output: String::new(),
+        };
 
-/* 'class' className '{' classVarDec* subroutineDec* '}' */
-fn eval_class(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<class>");
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_class_name(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    while let Token::Keyword(val) = &tokens[*index] {
-        if !["static", "field", "constructor", "function", "method"].contains(&val.as_str()) {
-            break;
-        }
-
-        match val.as_str() {
-            "static" | "field" => eval_class_var_dec(tokens, index),
-            "constructor" | "function" | "method" => eval_subroutine_dec(tokens, index),
-            _ => {}
-        }
-
-        if *index == &tokens.len() - 1 {
-            break;
-        }
-
-        *index += 1;
+        parser.eval_class();
+        parser.output
     }
 
-    println!("{}", &tokens[*index]);
-    println!("</class>");
-}
+    /* ================================= */
+    /* ======= Program Structure ======= */
+    /* ================================= */
 
-/* ('static'|'field') type varName (',' varName)* ';' */
-fn eval_class_var_dec(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<classVarDec>");
-    println!("{}", &tokens[*index]);
+    /* 'class' className '{' classVarDec* subroutineDec* '}' */
+    fn eval_class(self: &mut Self) {
+        self.append(Some("<class>"));
+        self.append(None);
 
-    *index += 1;
-    eval_type(tokens, index);
-    *index += 1;
-    eval_var_name(tokens, index);
+        self.advance();
+        self.eval_class_name();
 
-    *index += 1;
-    while let Token::Symbol(val) = &tokens[*index] {
-        if val == ";" {
-            println!("{}", &tokens[*index]);
-            break;
-        }
+        self.advance();
+        self.append(None);
 
-        println!("{}", &tokens[*index]);
-        if let Token::Symbol(_) = &tokens[*index] {
-            *index += 1;
-            eval_var_name(tokens, index);
-            *index += 1;
-        }
-    }
+        self.advance();
 
-    println!("</classVarDec>");
-}
-
-/* ('constructor'|'function'|'method') ('void'|type) subroutineName '(' parameterList ')' subroutineBody */
-fn eval_subroutine_dec(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<subroutineDec>");
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    match &tokens[*index] {
-        Token::Keyword(val) => match val.as_str() {
-            "void" => println!("{}", &tokens[*index]),
-            "int" | "char" | "boolean" => eval_type(tokens, index),
-            _ => { /* no rule */ }
-        },
-        Token::Identifier(_) => eval_type(tokens, index),
-        _ => { /* rule error */ }
-    }
-
-    *index += 1;
-    if let Token::Identifier(_) = &tokens[*index] {
-        eval_subroutine_name(tokens, index);
-    }
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    match &tokens[*index] {
-        Token::Symbol(val) => println!("{}", &tokens[*index]),
-        _ => {
-            eval_parameter_list(tokens, index);
-            *index += 1;
-            println!("{}", &tokens[*index]);
-        }
-    }
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    if let Token::Keyword(val) = &tokens[*index + 1] {
-        if ["var", "let", "if", "do", "while", "return"].contains(&val.as_str()) {
-            eval_subroutine_body(tokens, index);
-        }
-    }
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-    println!("</subroutineDec>");
-}
-
-/* 'int'|'char'|'boolean'|className */
-fn eval_type(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<type>");
-
-    match &tokens[*index] {
-        Token::Keyword(val) => match val.as_str() {
-            "int" | "char" | "boolean" => println!("{}", &tokens[*index]),
-            _ => { /* no rule */ }
-        },
-        Token::Identifier(_) => eval_class_name(tokens, index),
-        _ => { /* rule error */ }
-    }
-
-    println!("</type>");
-}
-
-/* identifier */
-fn eval_subroutine_name(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<subroutineName>");
-    println!("{}", &tokens[*index]);
-    println!("</subroutineName>");
-}
-
-/* ( (type varName) (',' type varName)* )? */
-fn eval_parameter_list(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<parameterList>");
-
-    eval_type(tokens, index);
-    *index += 1;
-    eval_var_name(tokens, index);
-
-    *index += 1;
-    while let Token::Symbol(val) = &tokens[*index] {
-        println!("{}", &tokens[*index]);
-        *index += 1;
-        eval_type(tokens, index);
-        *index += 1;
-        eval_var_name(tokens, index);
-    }
-
-    println!("</parameterList>");
-}
-
-/* identifier */
-fn eval_var_name(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<varName>");
-    println!("{}", &tokens[*index]);
-    println!("</varName>");
-}
-
-/* identifier */
-fn eval_class_name(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<className>");
-    println!("{}", &tokens[*index]);
-    println!("</className>");
-}
-
-/* '{' varDec* statements '}' */
-fn eval_subroutine_body(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<subroutineBody>");
-
-    *index += 1;
-    while let Token::Keyword(val) = &tokens[*index] {
-        match val.as_str() {
-            "var" => eval_var_dec(tokens, index),
-            "let" | "if" | "do" | "while" | "return" => eval_statements(tokens, index),
-            _ => {}
-        }
-
-        *index += 1;
-    }
-
-    println!("</subroutineBody>");
-}
-
-/* 'var' type varName (',' varName)* ';' */
-fn eval_var_dec(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<varDec>");
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_type(tokens, index);
-    *index += 1;
-    eval_var_name(tokens, index);
-
-    *index += 1;
-    while let Token::Symbol(val) = &tokens[*index] {
-        if val == ";" {
-            println!("{}", &tokens[*index]);
-            break;
-        }
-
-        println!("{}", &tokens[*index]);
-        if let Token::Symbol(_) = &tokens[*index] {
-            *index += 1;
-            eval_var_name(tokens, index);
-            *index += 1;
-        }
-    }
-
-    println!("</varDec>");
-}
-
-/* ============================== */
-/* ========= Statements ========= */
-/* ============================== */
-
-/* statement* */
-fn eval_statements(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<statements>");
-
-    if let Token::Keyword(val) = &tokens[*index] {
-        if ["if", "let", "do", "while", "return"].contains(&val.as_str()) {
-            eval_statement(tokens, index);
-        }
-    }
-
-    println!("</statements>");
-}
-
-/* letStatement|ifStatement|whileStatement|doStatement|returnStatement */
-fn eval_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<statement>");
-
-    if let Token::Keyword(val) = &tokens[*index] {
-        match val.as_str() {
-            "return" => eval_return_statement(tokens, index),
-            "if" => eval_if_statement(tokens, index),
-            "let" => eval_let_statement(tokens, index),
-            "do" => eval_do_statement(tokens, index),
-            "while" => eval_while_statement(tokens, index),
-            _ => { /* no rule */ }
-        }
-    }
-
-    println!("</statement>");
-}
-
-/* 'return' expression? ';' */
-fn eval_return_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<returnStatement>");
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    match &tokens[*index] {
-        Token::Symbol(_) => println!("{}", &tokens[*index]),
-        _ => eval_expression(tokens, index),
-    }
-
-    println!("</returnStatement>");
-}
-
-/* 'if' '(' expression ')' '{' statements '}' ( 'else' '{' statements '}' )? */
-fn eval_if_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<ifStatement>");
-
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_expression(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_statements(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    if let Token::Keyword(val) = &tokens[*index + 1] {
-        if val.as_str() == "else" {
-            *index += 1;
-            println!("{}", &tokens[*index]);
-            *index += 1;
-            println!("{}", &tokens[*index]);
-            *index += 1;
-            eval_statements(tokens, index);
-            *index += 1;
-            println!("{}", &tokens[*index]);
-        }
-    }
-
-    println!("</ifStatement>");
-}
-
-/* 'let' varName ('[' expression ']')? '=' expression ';' */
-fn eval_let_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<letStatement>");
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_var_name(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    if &tokens[*index] == &Token::Symbol("[".to_string()) {
-        *index += 1;
-        eval_expression(tokens, index);
-        println!("{}", &tokens[*index]);
-        *index += 1;
-    }
-
-    *index += 1;
-    eval_expression(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    println!("</letStatement>");
-}
-
-/* 'while' '(' expression ')' '{' statements '}' */
-fn eval_while_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<whileStatement>");
-
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_expression(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_statements(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    println!("</whileStatement>");
-}
-
-/* 'do' subroutineCall ';' */
-fn eval_do_statement(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<doStatement>");
-    
-    println!("{}", &tokens[*index]);
-
-    *index += 1;
-    eval_subroutine_call(tokens, index);
-
-    *index += 1;
-    println!("{}", &tokens[*index]);
-
-    println!("</doStatement>");
-}
-
-/* =============================== */
-/* ========= Expressions ========= */
-/* =============================== */
-
-/* term (op term)* */
-fn eval_expression(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<expression>");
-
-    eval_term(tokens, index);
-
-    while let Token::Symbol(val) = &tokens[*index + 1] {
-        if ["+", "-", "*", "/", "&", "|", "<", ">", "="].contains(&val.as_str()) {
-            *index += 1;
-            eval_op(tokens, index);
-        } else {
-            break;
-        }
-
-        *index += 1;
-        eval_term(tokens, index);
-    }
-
-    println!("</expression>");
-}
-
-/*
- * integerConstant | stringConstant | keywordConstant | varName
- * | varName '[' expression ']' | '(' expression ')' | (unaryOp term)
- * | subroutineCall
- */
-fn eval_term(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<term>");
-
-    match &tokens[*index] {
-        Token::IntConst(val) => println!("{}", &tokens[*index]),
-        Token::StrConst(val) => println!("{}>", &tokens[*index]),
-        Token::Keyword(_) => eval_keyword_constant(tokens, index),
-        /* '(' expression ')' | (unaryOp term) */
-        Token::Symbol(val) => match val.as_str() {
-            "-" | "~" => {
-                eval_unary_op(tokens, index);
-                *index += 1;
-                eval_term(tokens, index);
+        while let Token::Keyword(val) = self.current() {
+            if !["static", "field", "constructor", "function", "method"].contains(&val.as_str()) {
+                break;
             }
-            "(" => {
-                println!("{}", &tokens[*index]);
-                *index += 1;
-                eval_expression(tokens, index);
-                *index += 1;
-                println!("{}", &tokens[*index]);
+
+            match val.as_str() {
+                "static" | "field" => self.eval_class_var_dec(),
+                "constructor" | "function" | "method" => self.eval_subroutine_dec(),
+                _ => {}
             }
+
+            if self.index == self.tokens.len() - 1 {
+                break;
+            }
+
+            self.advance();
+        }
+
+        self.append(None);
+        self.append(Some("</class>"));
+    }
+
+    /* ('static'|'field') type varName (',' varName)* ';' */
+    fn eval_class_var_dec(self: &mut Self) {
+        self.append(Some("<classVarDec>"));
+        self.append(None);
+
+        self.advance();
+        self.eval_type();
+
+        self.advance();
+        self.eval_var_name();
+
+        self.advance();
+
+        while let Token::Symbol(val) = self.current() {
+            if val == ";" {
+                self.append(None);
+                break;
+            }
+
+            self.append(None);
+
+            if let Token::Symbol(_) = self.current() {
+                self.advance();
+                self.eval_var_name();
+                self.advance();
+            }
+        }
+
+        self.append(Some("</classVarDec>"));
+    }
+
+    /* ('constructor'|'function'|'method') ('void'|type) subroutineName '(' parameterList ')' subroutineBody */
+    fn eval_subroutine_dec(self: &mut Self) {
+        self.append(Some("<subroutineDec>"));
+        self.append(None);
+
+        self.advance();
+        match self.current() {
+            Token::Keyword(val) => match val.as_str() {
+                "void" => self.append(None),
+                "int" | "char" | "boolean" => self.eval_type(),
+                _ => { /* no rule */ }
+            },
+            Token::Identifier(_) => self.eval_type(),
+            _ => { /* rule error */ }
+        }
+
+        self.advance();
+        if let Token::Identifier(_) = self.current() {
+            self.eval_subroutine_name();
+        }
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+
+        match self.current() {
+            Token::Symbol(_) => self.append(None),
+            _ => {
+                self.eval_parameter_list();
+                self.advance();
+                self.append(None);
+            }
+        }
+
+        self.advance();
+        self.append(None);
+
+        if let Token::Keyword(val) = self.next() {
+            if ["var", "let", "if", "do", "while", "return"].contains(&val.as_str()) {
+                self.eval_subroutine_body();
+            }
+        }
+
+        self.advance();
+        self.append(None);
+        self.append(Some("</subroutineDec>"));
+    }
+
+    /* 'int'|'char'|'boolean'|className */
+    fn eval_type(self: &mut Self) {
+        self.append(Some("<type>"));
+
+        match self.current() {
+            Token::Keyword(val) => match val.as_str() {
+                "int" | "char" | "boolean" => self.append(None),
+                _ => { /* no rule */ }
+            },
+            Token::Identifier(_) => self.eval_class_name(),
             _ => { /* no rule */ }
-        },
-        Token::Identifier(_) => {
-            /* varName | varName '[' expression ']' | subroutineCall */
-            match &tokens[*index + 1] {
-                Token::Symbol(val) => match val.as_str() {
-                    "(" | "." => eval_subroutine_call(tokens, index),
-                    "[" => {
-                        eval_var_name(tokens, index);
-                        *index += 1;
-                        println!("{}", &tokens[*index]);
-                        *index += 1;
-                        eval_expression(tokens, index);
-                        *index += 1;
-                        println!("{}", &tokens[*index]);
-                    }
-                    _ => {
-                        eval_var_name(tokens, index);
-                    }
-                },
+        }
+
+        self.append(Some("</type>"));
+    }
+
+    /* identifier */
+    fn eval_subroutine_name(self: &mut Self) {
+        self.append(Some("<subroutineName>"));
+        self.append(None);
+        self.append(Some("</subroutineName>"));
+    }
+
+    /* ( (type varName) (',' type varName)* )? */
+    fn eval_parameter_list(self: &mut Self) {
+        self.append(Some("<parameterList>"));
+
+        self.eval_type();
+
+        self.advance();
+        self.eval_var_name();
+
+        self.advance();
+
+        while let Token::Symbol(_) = self.current() {
+            self.append(None);
+            self.advance();
+            self.eval_type();
+            self.advance();
+            self.eval_var_name();
+        }
+
+        self.append(Some("</parameterList>"));
+    }
+
+    /* identifier */
+    fn eval_var_name(self: &mut Self) {
+        self.append(Some("<varName>"));
+        self.append(None);
+        self.append(Some("</varName>"));
+    }
+
+    /* identifier */
+    fn eval_class_name(self: &mut Self) {
+        self.append(Some("<className>"));
+        self.append(None);
+        self.append(Some("</className>"));
+    }
+
+    /* '{' varDec* statements '}' */
+    fn eval_subroutine_body(self: &mut Self) {
+        self.append(Some("<subroutineBody>"));
+
+        self.advance();
+
+        while let Token::Keyword(val) = self.current() {
+            match val.as_str() {
+                "var" => self.eval_var_dec(),
+                "let" | "if" | "do" | "while" | "return" => self.eval_statements(),
+                _ => {}
+            }
+
+            self.advance();
+        }
+
+        self.append(Some("</subroutineBody>"));
+    }
+
+    /* 'var' type varName (',' varName)* ';' */
+    fn eval_var_dec(self: &mut Self) {
+        self.append(Some("<varDec>"));
+        self.append(None);
+
+        self.advance();
+        self.eval_type();
+
+        self.advance();
+        self.eval_var_name();
+
+        self.advance();
+
+        while let Token::Symbol(val) = self.current() {
+            if val == ";" {
+                self.append(None);
+                break;
+            }
+
+            self.append(None);
+            if let Token::Symbol(_) = self.current() {
+                self.advance();
+                self.eval_var_name();
+                self.advance();
+            }
+        }
+
+        self.append(Some("</varDec>"));
+    }
+
+    /* ============================== */
+    /* ========= Statements ========= */
+    /* ============================== */
+
+    /* statement* */
+    fn eval_statements(self: &mut Self) {
+        self.append(Some("<statements>"));
+
+        if let Token::Keyword(val) = self.current() {
+            if ["if", "let", "do", "while", "return"].contains(&val.as_str()) {
+                self.eval_statement();
+            }
+        }
+
+        self.append(Some("</statements>"));
+    }
+
+    /* letStatement|ifStatement|whileStatement|doStatement|returnStatement */
+    fn eval_statement(self: &mut Self) {
+        self.append(Some("<statement>"));
+
+        if let Token::Keyword(val) = self.current() {
+            match val.as_str() {
+                "return" => self.eval_return_statement(),
+                "if" => self.eval_if_statement(),
+                "let" => self.eval_let_statement(),
+                "do" => self.eval_do_statement(),
+                "while" => self.eval_while_statement(),
                 _ => { /* no rule */ }
             }
         }
+
+        self.append(Some("</statement>"));
     }
 
-    println!("</term>");
-}
+    /* 'return' expression? ';' */
+    fn eval_return_statement(self: &mut Self) {
+        self.append(Some("<returnStatement>"));
+        self.append(None);
 
-/* subroutineName '(' expressionList ')' |
- * (className | varName) '.' subroutineName '(' expressionList ')'
- */
-fn eval_subroutine_call(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<subroutineCall>");
+        self.advance();
+        match self.current() {
+            Token::Symbol(_) => self.append(None),
+            _ => self.eval_expression(),
+        }
 
-    if let Token::Symbol(val) = &tokens[*index + 1] {
-        if val.as_str() == "." {
-            if let Token::Identifier(val) = &tokens[*index] {
-                if val.chars().nth(0).unwrap().is_ascii_uppercase() {
-                    eval_class_name(tokens, index);
-                } else {
-                    eval_var_name(tokens, index);
-                }
+        self.append(Some("</returnStatement>"));
+    }
+
+    /* 'if' '(' expression ')' '{' statements '}' ( 'else' '{' statements '}' )? */
+    fn eval_if_statement(self: &mut Self) {
+        self.append(Some("<ifStatement>"));
+
+        self.append(None);
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.eval_expression();
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.eval_statements();
+
+        self.advance();
+        self.append(None);
+
+        if let Token::Keyword(val) = self.next() {
+            if val.as_str() == "else" {
+                self.advance();
+                self.append(None);
+
+                self.advance();
+                self.append(None);
+
+                self.advance();
+                self.eval_statements();
+
+                self.advance();
+                self.append(None);
+            }
+        }
+
+        self.append(Some("</ifStatement>"));
+    }
+
+    /* 'let' varName ('[' expression ']')? '=' expression ';' */
+    fn eval_let_statement(self: &mut Self) {
+        self.append(Some("<letStatement>"));
+        self.append(None);
+
+        self.advance();
+        self.eval_var_name();
+
+        self.advance();
+        self.append(None);
+
+        if self.current() == &Token::Symbol("[".to_string()) {
+            self.advance();
+            self.eval_expression();
+            self.append(None);
+            self.advance();
+        }
+
+        self.advance();
+        self.eval_expression();
+
+        self.advance();
+        self.append(None);
+
+        self.append(Some("</letStatement>"));
+    }
+
+    /* 'while' '(' expression ')' '{' statements '}' */
+    fn eval_while_statement(self: &mut Self) {
+        self.append(Some("<whileStatement>"));
+
+        self.append(None);
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.eval_expression();
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.append(None);
+
+        self.advance();
+        self.eval_statements();
+
+        self.advance();
+        self.append(None);
+
+        self.append(Some("</whileStatement>"));
+    }
+
+    /* 'do' subroutineCall ';' */
+    fn eval_do_statement(self: &mut Self) {
+        self.append(Some("<doStatement>"));
+
+        self.append(None);
+
+        self.advance();
+        self.eval_subroutine_call();
+
+        self.advance();
+        self.append(None);
+
+        self.append(Some("</doStatement>"));
+    }
+
+    /* =============================== */
+    /* ========= Expressions ========= */
+    /* =============================== */
+
+    /* term (op term)* */
+    fn eval_expression(self: &mut Self) {
+        self.append(Some("<expression>"));
+        self.eval_term();
+
+        while let Token::Symbol(val) = self.next() {
+            if ["+", "-", "*", "/", "&", "|", "<", ">", "="].contains(&val.as_str()) {
+                self.advance();
+                self.eval_op();
+            } else {
+                break;
             }
 
-            *index += 1;
-            println!("{}", &tokens[*index]);
-            *index += 1;
+            self.advance();
+            self.eval_term();
         }
+
+        self.append(Some("</expression>"));
     }
 
-    println!("{}", &tokens[*index]);
+    /*
+     * integerConstant | stringConstant | keywordConstant | varName
+     * | varName '[' expression ']' | '(' expression ')' | (unaryOp term)
+     * | subroutineCall
+     */
+    fn eval_term(self: &mut Self) {
+        self.append(Some("<term>"));
 
-    *index += 1;
-    println!("{}", &tokens[*index]);
+        match self.current() {
+            Token::IntConst(_) | Token::StrConst(_) => self.append(None),
+            Token::Keyword(_) => self.eval_keyword_constant(),
+            /* '(' expression ')' | (unaryOp term) */
+            Token::Symbol(val) => match val.as_str() {
+                "-" | "~" => {
+                    self.eval_unary_op();
+                    self.advance();
+                    self.eval_term();
+                }
+                "(" => {
+                    self.append(None);
+                    self.advance();
+                    self.eval_expression();
+                    self.advance();
+                    self.append(None);
+                }
+                _ => { /* no rule */ }
+            },
+            Token::Identifier(_) => {
+                /* varName | varName '[' expression ']' | subroutineCall */
+                match self.next() {
+                    Token::Symbol(val) => match val.as_str() {
+                        "(" | "." => self.eval_subroutine_call(),
+                        "[" => {
+                            self.eval_var_name();
 
-    eval_expression_list(tokens, index);
+                            self.advance();
+                            self.append(None);
 
-    *index += 1;
-    println!("{}", &tokens[*index]);
+                            self.advance();
+                            self.eval_expression();
 
-    println!("</subroutineCall>");
-}
-
-/* '+' | '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=' */
-fn eval_op(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<op>");
-    println!("{}", &tokens[*index]);
-    println!("</op>");
-}
-
-/* '-' | '~' */
-fn eval_unary_op(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<unaryOp>");
-    println!("{}", &tokens[*index]);
-    println!("</unaryOp>");
-}
-
-/* 'true' | 'false' | 'null' | 'this' */
-fn eval_keyword_constant(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<keywordConst>");
-    println!("{}", &tokens[*index]);
-    println!("</keywordConst>");
-}
-
-/* (expression (',' expression)* )? */
-fn eval_expression_list(tokens: &Vec<Token>, index: &mut usize) {
-    println!("<expressionList>");
-
-    if let Token::Symbol(val) = &tokens[*index + 1] {
-        if val.as_str() == ")" {
-            println!("</expressionList>");
-            return;
+                            self.advance();
+                            self.append(None);
+                        }
+                        _ => {
+                            self.eval_var_name();
+                        }
+                    },
+                    _ => { /* no rule */ }
+                }
+            }
         }
+
+        self.append(Some("</term>"));
     }
 
-    *index += 1;
-    eval_expression(tokens, index);
+    /* subroutineName '(' expressionList ')' |
+     * (className | varName) '.' subroutineName '(' expressionList ')'
+     */
+    fn eval_subroutine_call(self: &mut Self) {
+        self.append(Some("<subroutineCall>"));
 
-    while let Token::Symbol(val) = &tokens[*index] {
-        if val.as_str() == ")" {
-            break;
+        if let Token::Symbol(val) = self.next() {
+            if val.as_str() == "." {
+                if let Token::Identifier(val) = self.current() {
+                    if val.chars().nth(0).unwrap().is_ascii_uppercase() {
+                        self.eval_class_name();
+                    } else {
+                        self.eval_var_name();
+                    }
+                }
+
+                self.advance();
+                self.append(None);
+
+                self.advance();
+            }
         }
 
-        if val.as_str() == "," {
-            println!("{}", &tokens[*index]);
-            *index += 1;
-            eval_expression(tokens, index);
-        }
+        self.append(None);
+
+        self.advance();
+        self.append(None);
+
+        self.eval_expression_list();
+
+        self.advance();
+        self.append(None);
+
+        self.append(Some("</subroutineCall>"));
     }
 
-    println!("</expressionList>");
+    /* '+' | '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=' */
+    fn eval_op(self: &mut Self) {
+        self.append(Some("<op>"));
+        self.append(None);
+        self.append(Some("</op>"));
+    }
+
+    /* '-' | '~' */
+    fn eval_unary_op(self: &mut Self) {
+        self.append(Some("<unaryOp>"));
+        self.append(None);
+        self.append(Some("</unaryOp>"));
+    }
+
+    /* 'true' | 'false' | 'null' | 'this' */
+    fn eval_keyword_constant(self: &mut Self) {
+        self.append(Some("<keywordConst>"));
+        self.append(None);
+        self.append(Some("</keywordConst>"));
+    }
+
+    /* (expression (',' expression)* )? */
+    fn eval_expression_list(self: &mut Self) {
+        self.append(Some("<expressionList>"));
+
+        if let Token::Symbol(val) = self.next() {
+            if val.as_str() == ")" {
+                self.append(Some("</expressionList>"));
+                return;
+            }
+        }
+
+        self.next();
+        self.eval_expression();
+
+        while let Token::Symbol(val) = self.current() {
+            if val.as_str() == ")" {
+                break;
+            }
+
+            if val.as_str() == "," {
+                self.append(None);
+                self.next();
+                self.eval_expression();
+            }
+        }
+
+        self.append(Some("</expressionList>"));
+    }
+
+    /* ================================== */
+    /* ========= Helper Methods ========= */
+    /* ================================== */
+
+    fn current(self: &Self) -> &Token {
+        &self.tokens[self.index]
+    }
+
+    fn next(self: &Self) -> &Token {
+        &self.tokens[self.index + 1]
+    }
+
+    fn advance(self: &mut Self) {
+        self.index += 1;
+    }
+
+    fn append(self: &mut Self, val: Option<&str>) {
+        match val {
+            None => write!(self.output, "{}", self.tokens[self.index]).unwrap(),
+            Some(v) => write!(self.output, "{v}").unwrap(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        Token::{self, *},
-        parse,
-    };
+    use super::Token::{self, *};
 
     #[test]
-    fn parse_test_class() {
+    fn parse_while_statement() {
         let token_stream: Vec<Token> = vec![
             //
             // class Main {
@@ -615,10 +657,10 @@ mod tests {
             Identifier("Main".to_string()),
             Symbol("{".to_string()),
             //
-            // function int test() {
+            // function void main() {
             Keyword("function".to_string()),
             Keyword("void".to_string()),
-            Identifier("Main".to_string()),
+            Identifier("main".to_string()),
             Symbol("(".to_string()),
             Symbol(")".to_string()),
             Symbol("{".to_string()),
@@ -637,8 +679,8 @@ mod tests {
             Identifier("count".to_string()),
             Symbol("+".to_string()),
             IntConst("1".to_string()),
-            Symbol("}".to_string()),
             Symbol(";".to_string()),
+            Symbol("}".to_string()),
             //
             // return ; }
             Keyword("return".to_string()),
@@ -649,9 +691,68 @@ mod tests {
             Symbol("}".to_string()),
         ];
 
-        println!();
-        parse(token_stream);
-        println!();
-        assert!(true);
+        let expected = r#"
+            <class>
+                <keyword>class</keyword>
+                <className>Main</className>
+                <symbol>{</symbol>
+                <subroutineDec>
+                    <keyword>function</keyword>
+                    <keyword>void</keyword>
+                    <subroutineName>main</subroutineName>
+                    <symbol>(</symbol>
+                    <symbol>)</symbol>
+                    <symbol>{</symbol>
+                    <subroutineBody>
+                        <statements>
+                            <statement>
+                                <whileStatement>
+                                    <keyword>while</keyword>
+                                    <symbol>(</symbol>
+                                    <expression>
+                                        <term><varName>count</varName></term>
+                                        <op><symbol><</symbol></op>
+                                        <term><intConst>100</intConst></term>
+                                    </expression>
+                                    <symbol>)</symbol>
+                                    <symbol>{</symbol>
+                                    <statements>
+                                        <statement>
+                                            <letStatement>
+                                                <keyword>let</keyword>
+                                                <varName>count</varName>
+                                                <symbol>=</symbol>
+                                                <expression>
+                                                    <term><varName>count</varName></term>
+                                                    <op><symbol>+</symbol></op>
+                                                    <term><intConst>1</intConst></term>
+                                                </expression>
+                                                <symbol>;</symbol>
+                                            </letStatement>
+                                        </statement>
+                                    </statements>
+                                    <symbol>}</symbol>
+                                </whileStatement>
+                            </statement>
+                        </statements>
+                        <statements>
+                            <statement>
+                                <returnStatement>
+                                    <keyword>return</keyword>
+                                    <symbol>;</symbol>
+                                </returnStatement>
+                            </statement>
+                        </statements>
+                    </subroutineBody>
+                    <symbol>}</symbol>
+                </subroutineDec>
+                <symbol>}</symbol>
+            </class>
+        "#;
+
+        assert_eq!(
+            expected.replace(" ", "").replace("\n", ""),
+            super::Parser::parse(token_stream)
+        );
     }
 }
