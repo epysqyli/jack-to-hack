@@ -59,7 +59,7 @@ impl Assembler {
         let mut hack_out: Vec<String> = vec![];
 
         for op in asm_without_variables {
-            match Instruction::from(op.clone()) {
+            match Instruction::try_from(op.clone()) {
                 Ok(inst) => match inst.to_hack() {
                     Ok(inst_as_hack) => hack_out.push(inst_as_hack.0),
                     Err(err) => return Err(err),

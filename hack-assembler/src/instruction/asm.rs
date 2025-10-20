@@ -8,16 +8,14 @@ pub enum Instruction {
     C(String),
 }
 
-impl Instruction {
-    pub fn from(string: String) -> Result<Self, ()> {
-        if string.is_empty() {
-            return Err(());
-        }
+impl TryFrom<String> for Instruction {
+    type Error = ();
 
-        if let Some(instruction_type) = string.chars().nth(0) {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if let Some(instruction_type) = value.chars().nth(0) {
             return match instruction_type {
-                '@' => Ok(Instruction::A(string)),
-                _ => Ok(Instruction::C(string)),
+                '@' => Ok(Instruction::A(value)),
+                _ => Ok(Instruction::C(value)),
             };
         }
 
@@ -169,7 +167,7 @@ mod tests {
 
         assert_eq!(
             Instruction::A(inst.to_string()),
-            Instruction::from(inst.to_string()).unwrap()
+            Instruction::try_from(inst.to_string()).unwrap()
         );
     }
 
@@ -179,7 +177,7 @@ mod tests {
 
         assert_eq!(
             Instruction::C(inst.to_string()),
-            Instruction::from(inst.to_string()).unwrap()
+            Instruction::try_from(inst.to_string()).unwrap()
         );
     }
 
