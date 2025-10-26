@@ -1,5 +1,8 @@
+mod grammar;
 #[path = "syntax-analyzer/parser.rs"]
 mod parser;
+#[path = "syntax-analyzer/parser-alt.rs"]
+mod parser_alt;
 #[path = "syntax-analyzer/tokenizer.rs"]
 mod tokenizer;
 
