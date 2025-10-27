@@ -117,8 +117,8 @@ impl Parser {
         let var_name = self.eval_var_name();
 
         class_var_decs.push(ClassVarDec {
-            var_type: var_type,
-            jack_type: jack_type,
+            var_type: var_type.try_into().unwrap(),
+            jack_type: jack_type.try_into().unwrap(),
             name: var_name,
         });
 
@@ -133,8 +133,8 @@ impl Parser {
                 self.advance();
 
                 class_var_decs.push(ClassVarDec {
-                    var_type: class_var_decs[0].var_type.to_owned(),
-                    jack_type: class_var_decs[0].jack_type.to_owned(),
+                    var_type: class_var_decs[0].var_type.clone(),
+                    jack_type: class_var_decs[0].jack_type.clone(),
                     name: self.eval_var_name(),
                 });
 
@@ -191,8 +191,8 @@ impl Parser {
         self.advance();
 
         SubroutineDec {
-            routine_type: routine_type,
-            return_type: return_type,
+            routine_type: routine_type.try_into().unwrap(),
+            return_type: return_type.try_into().unwrap(),
             name: routine_name,
             parameters: parameters,
             body: routine_body,
@@ -226,7 +226,7 @@ impl Parser {
         let param_name = self.eval_var_name();
 
         parameters.push(Parameter {
-            jack_type: param_type,
+            jack_type: param_type.try_into().unwrap(),
             name: param_name,
         });
 
@@ -237,7 +237,7 @@ impl Parser {
             self.advance();
             let param_name = self.eval_var_name();
             parameters.push(Parameter {
-                jack_type: param_type,
+                jack_type: param_type.try_into().unwrap(),
                 name: param_name,
             });
         }
@@ -292,7 +292,7 @@ impl Parser {
         let var_name = self.eval_var_name();
 
         var_decs.push(VarDec {
-            jack_type: var_type,
+            jack_type: var_type.try_into().unwrap(),
             name: var_name,
         });
 
@@ -696,19 +696,19 @@ mod tests {
             name: "Example".to_owned(),
             vars: vec![
                 ClassVarDec {
-                    var_type: "field".to_owned(),
-                    jack_type: "int".to_owned(),
+                    var_type: ClassVarType::Field,
+                    jack_type: JackType::Int,
                     name: "a".to_owned(),
                 },
                 ClassVarDec {
-                    var_type: "field".to_owned(),
-                    jack_type: "int".to_owned(),
+                    var_type: ClassVarType::Field,
+                    jack_type: JackType::Int,
                     name: "b".to_owned(),
                 },
             ],
             routines: vec![SubroutineDec {
-                routine_type: "function".to_owned(),
-                return_type: "int".to_owned(),
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Type(JackType::Int),
                 name: "example".to_owned(),
                 parameters: vec![],
                 body: SubroutineBody {

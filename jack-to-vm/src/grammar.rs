@@ -1,6 +1,3 @@
-// TODO: use enums instead of strings when reasonable
-
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct Class {
     pub name: String,
@@ -8,32 +5,104 @@ pub struct Class {
     pub routines: Vec<SubroutineDec>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct ClassVarDec {
-    pub var_type: String,  /* static|field */
-    pub jack_type: String, /* int|char|boolean|class */
+    pub var_type: ClassVarType,
+    pub jack_type: JackType,
     pub name: String,
 }
 
-#[allow(dead_code)]
+#[derive(Debug, PartialEq, Clone)]
+pub enum ClassVarType {
+    Static,
+    Field,
+}
+
+impl TryFrom<String> for ClassVarType {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "static" => Ok(Self::Static),
+            "field" => Ok(Self::Field),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum JackType {
+    Int,
+    Char,
+    Boolean,
+    Class(String),
+}
+
+impl TryFrom<String> for JackType {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "int" => Ok(Self::Int),
+            "char" => Ok(Self::Char),
+            "boolean" => Ok(Self::Boolean),
+            _ => Ok(Self::Class(value.into())),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SubroutineDec {
-    pub routine_type: String,       /* 'constructor'|'function'|'method' */
-    pub return_type: String,        /* 'void'|type */
-    pub name: String,               /* subroutineName */
-    pub parameters: Vec<Parameter>, /* parameterList */
-    pub body: SubroutineBody,       /* subroutineBody */
+    pub routine_type: RoutineType,
+    pub return_type: ReturnType,
+    pub name: String,
+    pub parameters: Vec<Parameter>,
+    pub body: SubroutineBody,
 }
 
-#[allow(dead_code)]
+#[derive(Debug, PartialEq)]
+pub enum ReturnType {
+    Void,
+    Type(JackType),
+}
+
+impl TryFrom<String> for ReturnType {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "void" => Ok(Self::Void),
+            _ => Ok(Self::Type(value.try_into().unwrap())),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RoutineType {
+    Constructor,
+    Function,
+    Method,
+}
+
+impl TryFrom<String> for RoutineType {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "constructor" => Ok(Self::Constructor),
+            "function" => Ok(Self::Function),
+            "method" => Ok(Self::Method),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Parameter {
-    pub jack_type: String,
+    pub jack_type: JackType,
     pub name: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct SubroutineBody {
     pub vars: Vec<VarDec>,
@@ -49,14 +118,12 @@ impl Default for SubroutineBody {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct VarDec {
-    pub jack_type: String,
+    pub jack_type: JackType,
     pub name: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Let {
@@ -77,14 +144,12 @@ pub enum Statement {
     Do(SubroutineCall),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct Expression {
     pub term: Term,
     pub additional: Vec<(Operation, Term)>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Term {
     IntConst(usize),
@@ -110,7 +175,6 @@ pub struct SubroutineCall {
     pub expressions: Vec<Expression>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Operation {
     Plus,

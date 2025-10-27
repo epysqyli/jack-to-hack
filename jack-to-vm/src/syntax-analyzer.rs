@@ -31,8 +31,8 @@ mod tests {
             name: "Main".to_owned(),
             vars: vec![],
             routines: vec![SubroutineDec {
-                routine_type: "function".to_owned(),
-                return_type: "void".to_owned(),
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Void,
                 name: "main".to_owned(),
                 parameters: vec![],
                 body: SubroutineBody {
