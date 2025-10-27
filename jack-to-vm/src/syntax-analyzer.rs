@@ -1,12 +1,12 @@
+use crate::syntax_analyzer::grammar::Class;
+
 mod grammar;
 #[path = "syntax-analyzer/parser.rs"]
 mod parser;
-#[path = "syntax-analyzer/parser-alt.rs"]
-mod parser_alt;
 #[path = "syntax-analyzer/tokenizer.rs"]
 mod tokenizer;
 
-pub fn run(jack_class: String) -> String {
+pub fn run(jack_class: String) -> Class {
     let tokens = tokenizer::tokenize(&jack_class);
     let derivation_tree = parser::Parser::parse(tokens);
 
@@ -15,6 +15,8 @@ pub fn run(jack_class: String) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::syntax_analyzer::grammar::*;
+
     #[test]
     fn parse_mininal_class() {
         let input_program = r#"
@@ -25,35 +27,21 @@ mod tests {
             }
         "#;
 
-        let expected = r#"
-            <class>
-                <keyword>class</keyword>
-                <identifier>Main</identifier>
-                <symbol>{</symbol>
-                <subroutineDec>
-                    <keyword>function</keyword>
-                    <keyword>void</keyword>
-                    <identifier>main</identifier>
-                    <symbol>(</symbol>
-                    <symbol>)</symbol>
-                    <symbol>{</symbol>
-                    <subroutineBody>
-                        <statements>
-                            <returnStatement>
-                                <keyword>return</keyword>
-                                <symbol>;</symbol>
-                            </returnStatement>
-                        </statements>
-                    </subroutineBody>
-                    <symbol>}</symbol>
-                </subroutineDec>
-                <symbol>}</symbol>
-            </class>
-        "#;
+        let expected = Class {
+            name: "Main".to_owned(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                routine_type: "function".to_owned(),
+                return_type: "void".to_owned(),
+                name: "main".to_owned(),
+                parameters: vec![],
+                body: SubroutineBody {
+                    vars: vec![],
+                    statements: vec![Statement::Return(None)],
+                },
+            }],
+        };
 
-        assert_eq!(
-            expected.replace(" ", "").replace("\n", ""),
-            super::run(input_program.into())
-        );
+        assert_eq!(expected, super::run(input_program.into()));
     }
 }

@@ -1,17 +1,15 @@
-use std::{
-    collections::HashMap,
-    fs::{self, read_to_string},
-    path::PathBuf,
-};
+use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
 
 #[path = "syntax-analyzer.rs"]
 mod syntax_analyzer;
 
+#[allow(unused)]
 pub fn compile(program_path: &PathBuf) {
     let jack_classes = read_jack_classes_from_fs(program_path);
     jack_classes.into_iter().for_each(|(name, content)| {
         let derivation_tree = syntax_analyzer::run(content);
-        fs::write(name.replace(".jack", ".xml"), derivation_tree).expect("Cannot save xml output");
+        // Each derivation tree should be supplied to the code generator.
+        // the final output being the intermediate representation vm code.
     });
 }
 

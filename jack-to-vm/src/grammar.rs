@@ -110,12 +110,6 @@ pub struct SubroutineCall {
     pub expressions: Vec<Expression>,
 }
 
-impl Default for Term {
-    fn default() -> Self {
-        Term::IntConst(0)
-    }
-}
-
 #[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Operation {
