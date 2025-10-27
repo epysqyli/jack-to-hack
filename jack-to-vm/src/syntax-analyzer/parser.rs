@@ -1,4 +1,4 @@
-use crate::syntax_analyzer::{grammar::*, tokenizer::Token};
+use super::{grammar::*, tokenizer::Token};
 
 /// Tokens -> recursive application of grammar rules -> derivation tree
 ///
