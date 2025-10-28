@@ -52,12 +52,12 @@ pub struct Parser {
 
 impl Parser {
     pub fn parse(tokens: Vec<Token>) -> Class {
-        let mut parser = Self {
-            index: 0,
-            tokens: tokens,
-        };
-
+        let mut parser = Self::new(tokens);
         parser.eval_class()
+    }
+
+    fn new(tokens: Vec<Token>) -> Self {
+        Self { index: 0, tokens }
     }
 
     /* ================================= */
@@ -175,7 +175,6 @@ impl Parser {
             Token::Symbol(_) => { /* do nothing */ }
             _ => {
                 parameters = self.eval_parameter_list();
-                self.advance();
             }
         }
 
@@ -184,6 +183,7 @@ impl Parser {
 
         if let Token::Keyword(val) = self.next() {
             if ["var", "let", "if", "do", "while", "return"].contains(&val.as_str()) {
+                self.advance();
                 routine_body = self.eval_subroutine_body();
             }
         }
@@ -231,7 +231,12 @@ impl Parser {
         });
 
         self.advance();
+
         while let Token::Symbol(_) = self.current() {
+            if self.current() == &Token::Symbol(")".into()) {
+                break;
+            }
+
             self.advance();
             let param_type = self.eval_type();
             self.advance();
@@ -257,8 +262,6 @@ impl Parser {
 
     /* '{' varDec* statements '}' */
     fn eval_subroutine_body(self: &mut Self) -> SubroutineBody {
-        self.advance();
-
         let mut vars: Vec<VarDec> = vec![];
         let mut statements: Vec<Statement> = vec![];
 
@@ -505,10 +508,7 @@ impl Parser {
                         term: Box::new(term),
                     }
                 }
-                _ => {
-                    dbg!(&self.current());
-                    panic!("Not a term");
-                }
+                _ => panic!("Not a term"),
             },
             Token::Identifier(_) => {
                 /* varName | varName '[' expression ']' | subroutineCall */
@@ -530,10 +530,7 @@ impl Parser {
                         }
                         _ => Term::VarName(self.eval_var_name()),
                     },
-                    _ => {
-                        dbg!(&self.current());
-                        panic!("Not a term");
-                    }
+                    _ => panic!("Not a term"),
                 }
             }
         }
@@ -738,5 +735,302 @@ mod tests {
         };
 
         assert_eq!(expected, super::Parser::parse(token_stream));
+    }
+
+    #[test]
+    fn parse_empty_class() {
+        let tokens = vec![
+            Keyword("class".into()),
+            Identifier("Main".into()),
+            Symbol("{".into()),
+            Symbol("}".into()),
+        ];
+
+        let expected = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![],
+        };
+
+        assert_eq!(expected, super::Parser::new(tokens).eval_class());
+    }
+
+    #[test]
+    fn parse_class_var_declarations() {
+        let tokens = vec![
+            Keyword("static".into()),
+            Keyword("int".into()),
+            Identifier("a".into()),
+            Symbol(",".into()),
+            Identifier("b".into()),
+            Symbol(";".into()),
+        ];
+
+        let expected = vec![
+            ClassVarDec {
+                var_type: ClassVarType::Static,
+                jack_type: JackType::Int,
+                name: "a".into(),
+            },
+            ClassVarDec {
+                var_type: ClassVarType::Static,
+                jack_type: JackType::Int,
+                name: "b".into(),
+            },
+        ];
+
+        assert_eq!(expected, super::Parser::new(tokens).eval_class_var_dec());
+    }
+
+    #[test]
+    fn parse_subroutine_declaration() {
+        let tokens = vec![
+            Keyword("function".into()),
+            Keyword("int".into()),
+            Identifier("incr".into()),
+            Symbol("(".into()),
+            Keyword("int".into()),
+            Identifier("a".into()),
+            Symbol(")".into()),
+            Symbol("{".into()),
+            Keyword("return".into()),
+            Identifier("a".into()),
+            Symbol("+".into()),
+            IntConst("1".into()),
+            Symbol(";".into()),
+            Symbol("}".into()),
+        ];
+
+        let expected = SubroutineDec {
+            routine_type: RoutineType::Function,
+            return_type: ReturnType::Type(JackType::Int),
+            name: "incr".into(),
+            parameters: vec![Parameter {
+                jack_type: JackType::Int,
+                name: "a".into(),
+            }],
+            body: SubroutineBody {
+                vars: vec![],
+                statements: vec![Statement::Return(Some(Expression {
+                    term: Term::VarName("a".into()),
+                    additional: vec![(Operation::Plus, Term::IntConst(1))],
+                }))],
+            },
+        };
+
+        assert_eq!(expected, super::Parser::new(tokens).eval_subroutine_dec());
+    }
+
+    #[test]
+    fn parse_subroutine_body() {
+        let tokens: Vec<super::Token> = vec![
+            Keyword("var".into()),
+            Keyword("int".into()),
+            Identifier("localA".into()),
+            Symbol(";".into()),
+            Keyword("var".into()),
+            Keyword("boolean".into()),
+            Identifier("localB".into()),
+            Symbol(";".into()),
+            Keyword("let".into()),
+            Identifier("localA".into()),
+            Symbol("=".into()),
+            IntConst("1".into()),
+            Symbol(";".into()),
+            Symbol("}".into()), /* only required due to `eval_subroutine_body` implementation */
+        ];
+
+        let expected = SubroutineBody {
+            vars: vec![
+                VarDec {
+                    jack_type: JackType::Int,
+                    name: "localA".into(),
+                },
+                VarDec {
+                    jack_type: JackType::Boolean,
+                    name: "localB".into(),
+                },
+            ],
+            statements: vec![Statement::Let {
+                var_name: "localA".into(),
+                array_access: None,
+                exp: Expression {
+                    term: Term::IntConst(1),
+                    additional: vec![],
+                },
+            }],
+        };
+
+        assert_eq!(expected, super::Parser::new(tokens).eval_subroutine_body());
+    }
+
+    #[test]
+    fn parse_let_statement() {
+        let tokens = vec![
+            Keyword("let".into()),
+            Identifier("a".into()),
+            Symbol("=".into()),
+            Identifier("a".into()),
+            Symbol("+".into()),
+            IntConst("1".into()),
+            Symbol(";".into()),
+        ];
+
+        let expected = Statement::Let {
+            var_name: "a".into(),
+            array_access: None,
+            exp: Expression {
+                term: Term::VarName("a".into()),
+                additional: vec![(Operation::Plus, Term::IntConst(1))],
+            },
+        };
+
+        let actual = super::Parser::new(tokens).eval_let_statement();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_return_statement() {
+        let tokens = vec![
+            Keyword("return".into()),
+            Identifier("a".into()),
+            Symbol(";".into()),
+        ];
+
+        let expected = Statement::Return(Some(Expression {
+            term: Term::VarName("a".into()),
+            additional: vec![],
+        }));
+
+        let actual = super::Parser::new(tokens).eval_return_statement();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_if_statement() {
+        let tokens = vec![
+            Keyword("if".into()),
+            Symbol("(".into()),
+            Identifier("a".into()),
+            Symbol("<".into()),
+            IntConst("5".into()),
+            Symbol(")".into()),
+            Symbol("{".into()),
+            Keyword("let".into()),
+            Identifier("a".into()),
+            Symbol("=".into()),
+            Identifier("a".into()),
+            Symbol("+".into()),
+            IntConst("1".into()),
+            Symbol(";".into()),
+            Symbol("}".into()),
+            Keyword("else".into()),
+            Symbol("{".into()),
+            Keyword("let".into()),
+            Identifier("a".into()),
+            Symbol("=".into()),
+            Identifier("a".into()),
+            Symbol("*".into()),
+            IntConst("2".into()),
+            Symbol("}".into()),
+        ];
+
+        let expected = Statement::If {
+            exp: Expression {
+                term: Term::VarName("a".into()),
+                additional: vec![(Operation::LessThan, Term::IntConst(5))],
+            },
+            statements: vec![Statement::Let {
+                var_name: "a".into(),
+                array_access: None,
+                exp: Expression {
+                    term: Term::VarName("a".into()),
+                    additional: vec![(Operation::Plus, Term::IntConst(1))],
+                },
+            }],
+            else_statements: Some(vec![Statement::Let {
+                var_name: "a".into(),
+                array_access: None,
+                exp: Expression {
+                    term: Term::VarName("a".into()),
+                    additional: vec![(Operation::Multiply, Term::IntConst(2))],
+                },
+            }]),
+        };
+
+        let actual = super::Parser::new(tokens).eval_if_statement();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_while_statement() {
+        let tokens = vec![
+            Keyword("while".into()),
+            Symbol("(".into()),
+            Identifier("a".into()),
+            Symbol("<".into()),
+            IntConst("5".into()),
+            Symbol(")".into()),
+            Symbol("{".into()),
+            Keyword("let".into()),
+            Identifier("a".into()),
+            Symbol("=".into()),
+            Identifier("a".into()),
+            Symbol("+".into()),
+            IntConst("1".into()),
+            Symbol(";".into()),
+            Symbol("}".into()),
+        ];
+
+        let expected = Statement::While {
+            exp: Expression {
+                term: Term::VarName("a".into()),
+                additional: vec![(Operation::LessThan, Term::IntConst(5))],
+            },
+            statements: vec![Statement::Let {
+                var_name: "a".into(),
+                array_access: None,
+                exp: Expression {
+                    term: Term::VarName("a".into()),
+                    additional: vec![(Operation::Plus, Term::IntConst(1))],
+                },
+            }],
+        };
+
+        let actual = super::Parser::new(tokens).eval_while_statement();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_do_statement() {
+        let tokens = vec![
+            Keyword("do".into()),
+            Identifier("AnotherClass".into()),
+            Symbol(".".into()),
+            Identifier("incr".into()),
+            Symbol("(".into()),
+            Identifier("a".into()),
+            Symbol(")".into()),
+            Symbol(";".into()),
+            Symbol(";".into()),
+        ];
+
+        let expected = Statement::Do(SubroutineCall {
+            callee: Some("AnotherClass".into()),
+            routine_name: "incr".into(),
+            expressions: vec![Expression {
+                term: Term::Expression(Box::new(Expression {
+                    term: Term::VarName("a".into()),
+                    additional: vec![],
+                })),
+                additional: vec![],
+            }],
+        });
+
+        assert_eq!(expected, super::Parser::new(tokens).eval_do_statement());
     }
 }
