@@ -8,13 +8,17 @@ mod syntax_analyzer;
 mod code_generator;
 
 #[allow(unused)]
-pub fn compile(program_path: &PathBuf) {
+pub fn compile(program_path: &PathBuf) -> HashMap<String, Vec<String>> {
     let jack_classes = read_jack_classes_from_fs(program_path);
+    let mut vm_outputs: HashMap<String, Vec<String>> = HashMap::new();
+
     jack_classes.into_iter().for_each(|(name, content)| {
         let derivation_tree = syntax_analyzer::run(content);
-        // Each derivation tree should be supplied to the code generator.
-        // the final output being the intermediate representation vm code.
+        let vm_output = code_generator::CodeGenerator::compile(derivation_tree);
+        vm_outputs.insert(name, vm_output);
     });
+
+    vm_outputs
 }
 
 fn read_jack_classes_from_fs(program_path: &PathBuf) -> HashMap<String, String> {
