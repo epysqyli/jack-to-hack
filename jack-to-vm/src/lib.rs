@@ -1,7 +1,11 @@
 use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
+mod grammar;
 
 #[path = "syntax-analyzer.rs"]
 mod syntax_analyzer;
+
+#[path = "code-generator.rs"]
+mod code_generator;
 
 #[allow(unused)]
 pub fn compile(program_path: &PathBuf) {

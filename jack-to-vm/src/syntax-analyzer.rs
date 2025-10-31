@@ -1,10 +1,9 @@
-mod grammar;
 #[path = "syntax-analyzer/parser.rs"]
 mod parser;
 #[path = "syntax-analyzer/tokenizer.rs"]
 mod tokenizer;
 
-pub fn run(jack_class: String) -> grammar::Class {
+pub fn run(jack_class: String) -> super::grammar::Class {
     let tokens = tokenizer::tokenize(&jack_class);
     let derivation_tree = parser::Parser::parse(tokens);
 
@@ -13,7 +12,7 @@ pub fn run(jack_class: String) -> grammar::Class {
 
 #[cfg(test)]
 mod tests {
-    use crate::syntax_analyzer::grammar::*;
+    use crate::grammar::*;
 
     #[test]
     fn parse_mininal_class() {

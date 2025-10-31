@@ -1,4 +1,5 @@
-use super::{grammar::*, tokenizer::Token};
+use super::tokenizer::Token;
+use super::super::grammar::*;
 
 /// Tokens -> recursive application of grammar rules -> derivation tree
 ///
@@ -633,7 +634,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::Token::*;
-    use crate::syntax_analyzer::grammar::*;
+    use super::super::super::grammar::*;
 
     #[test]
     fn parse_class() {
