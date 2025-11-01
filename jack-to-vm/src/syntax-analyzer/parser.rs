@@ -1,5 +1,5 @@
-use super::tokenizer::Token;
 use super::super::grammar::*;
+use super::tokenizer::Token;
 
 /// Tokens -> recursive application of grammar rules -> derivation tree
 ///
@@ -46,17 +46,17 @@ use super::super::grammar::*;
 /// </class>
 ///
 /// The XML representation is simply a human readable one.
-pub struct Parser {
+pub fn parse(tokens: Vec<Token>) -> Class {
+    let mut parser = Parser::new(tokens);
+    parser.eval_class()
+}
+
+struct Parser {
     index: usize,
     tokens: Vec<Token>,
 }
 
 impl Parser {
-    pub fn parse(tokens: Vec<Token>) -> Class {
-        let mut parser = Self::new(tokens);
-        parser.eval_class()
-    }
-
     fn new(tokens: Vec<Token>) -> Self {
         Self { index: 0, tokens }
     }
@@ -633,8 +633,8 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use super::Token::*;
     use super::super::super::grammar::*;
+    use super::Token::*;
 
     #[test]
     fn parse_class() {
@@ -735,7 +735,7 @@ mod tests {
             }],
         };
 
-        assert_eq!(expected, super::Parser::parse(token_stream));
+        assert_eq!(expected, super::parse(token_stream));
     }
 
     #[test]

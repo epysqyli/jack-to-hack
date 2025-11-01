@@ -5,7 +5,7 @@ mod tokenizer;
 
 pub fn run(jack_class: String) -> super::grammar::Class {
     let tokens = tokenizer::tokenize(&jack_class);
-    let derivation_tree = parser::Parser::parse(tokens);
+    let derivation_tree = parser::parse(tokens);
 
     derivation_tree
 }
