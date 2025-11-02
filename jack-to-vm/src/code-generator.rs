@@ -1,44 +1,30 @@
+#[path = "code-generator/symbols.rs"]
+mod symbols;
+
 use super::grammar::*;
+use symbols::*;
 
-pub struct CodeGenerator {
-    // class level symbol table
-    // method level symbol table
+/// Compile the class into a vector of VM command strings
+pub fn compile(class: Class) -> Vec<String> {
+    let code_generator = CodeGenerator::new(&class);
+    code_generator.compile()
 }
 
-impl CodeGenerator {
-    pub fn compile(class: Class) -> Vec<String> {
-        vec![]
+#[allow(dead_code)]
+struct CodeGenerator<'a> {
+    class: &'a Class,
+    symbols: ClassSymbols,
+}
+
+impl<'a> CodeGenerator<'a> {
+    fn new(class: &'a Class) -> Self {
+        Self {
+            class: class,
+            symbols: ClassSymbols::new(&class.vars),
+        }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn compile_minimal_class() {
-        let class = Class {
-            name: "Main".into(),
-            vars: vec![ClassVarDec {
-                var_type: ClassVarType::Static,
-                jack_type: JackType::Int,
-                name: "a".into(),
-            }],
-            routines: vec![SubroutineDec {
-                routine_type: RoutineType::Function,
-                return_type: ReturnType::Void,
-                name: "main".into(),
-                parameters: vec![],
-                body: SubroutineBody {
-                    vars: vec![],
-                    statements: vec![Statement::Return(None)],
-                },
-            }],
-        };
-
-        let expected: Vec<String> = vec![];
-        let actual = CodeGenerator::compile(class);
-
-        assert_eq!(expected, actual);
+    fn compile(self: &Self) -> Vec<String> {
+        vec![]
     }
 }

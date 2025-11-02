@@ -14,7 +14,7 @@ pub fn compile(program_path: &PathBuf) -> HashMap<String, Vec<String>> {
 
     jack_classes.into_iter().for_each(|(name, content)| {
         let derivation_tree = syntax_analyzer::run(content);
-        let vm_output = code_generator::CodeGenerator::compile(derivation_tree);
+        let vm_output = code_generator::compile(derivation_tree);
         vm_outputs.insert(name, vm_output);
     });
 
