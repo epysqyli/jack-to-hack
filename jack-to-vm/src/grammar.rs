@@ -111,10 +111,7 @@ pub struct SubroutineBody {
 
 impl Default for SubroutineBody {
     fn default() -> Self {
-        Self {
-            vars: vec![],
-            statements: vec![],
-        }
+        Self { vars: vec![], statements: vec![] }
     }
 }
 
@@ -126,20 +123,9 @@ pub struct VarDec {
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    Let {
-        var_name: String,
-        array_access: Option<Expression>,
-        exp: Expression,
-    },
-    If {
-        exp: Expression,
-        statements: Vec<Statement>,
-        else_statements: Option<Vec<Statement>>,
-    },
-    While {
-        exp: Expression,
-        statements: Vec<Statement>,
-    },
+    Let { var_name: String, array_access: Option<Expression>, exp: Expression },
+    If { exp: Expression, statements: Vec<Statement>, else_statements: Option<Vec<Statement>> },
+    While { exp: Expression, statements: Vec<Statement> },
     Return(Option<Expression>),
     Do(SubroutineCall),
 }
@@ -156,21 +142,18 @@ pub enum Term {
     StrConst(String),
     KeywordConst(String),
     VarName(String),
-    ArrayAccess {
-        var_name: String,
-        exp: Box<Expression>,
-    },
+    ArrayAccess { var_name: String, exp: Box<Expression> },
     Expression(Box<Expression>),
-    Unary {
-        op: Operation,
-        term: Box<Term>,
-    },
+    Unary { op: Operation, term: Box<Term> },
     Call(SubroutineCall),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct SubroutineCall {
-    pub callee: Option<String>, /* className or instance */
+    /* uppercase classname => function
+     * lowercase object => method call on a different object
+     * no callee => method call on the current object */
+    pub callee: Option<String>,
     pub routine_name: String,
     pub expressions: Vec<Expression>,
 }
@@ -178,7 +161,7 @@ pub struct SubroutineCall {
 #[derive(Debug, PartialEq)]
 pub enum Operation {
     Plus,
-    Minus,
+    Minus, /* [vm]sub when binary operation, [vm]neg when unary operator */
     Multiply,
     Divide,
     And,

@@ -6,7 +6,7 @@ type SymbolsTable = HashMap<String, SymbolEntry>;
 #[derive(Debug, PartialEq)]
 pub struct ClassSymbols {
     pub entries: SymbolsTable,
-    field_counter: u16,
+    pub field_counter: u16,
     static_counter: u16,
 }
 
@@ -127,6 +127,17 @@ pub enum Kind {
     Argument,
     Field,
     Static,
+}
+
+impl Kind {
+    pub fn vm(self: &Self) -> String {
+        match self {
+            Kind::Argument => "argument".into(),
+            Kind::Local => "local".into(),
+            Kind::Field => "this".into(),
+            Kind::Static => "static".into(),
+        }
+    }
 }
 
 #[cfg(test)]
