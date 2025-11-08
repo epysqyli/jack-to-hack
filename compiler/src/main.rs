@@ -3,6 +3,9 @@ use std::{env, fs, path::PathBuf};
 use hack_assembler::assembler::Assembler;
 use vm_translator::translate_vm_from_path;
 
+/* TODO:
+ * Access the fs only for reading Jack files and for writing the .asm/.hack output.
+ * The intermediate VM layer can operate entirely from memory. */
 fn main() {
     // vm -> asm -> hack
     let vm_program_path = env::args().nth(1).expect("No vm program path provided!");
