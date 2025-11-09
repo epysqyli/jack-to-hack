@@ -176,6 +176,7 @@ impl Parser {
             Token::Symbol(_) => { /* do nothing */ }
             _ => {
                 parameters = self.eval_parameter_list();
+                // self.advance();
             }
         }
 
@@ -246,6 +247,7 @@ impl Parser {
                 jack_type: param_type.try_into().unwrap(),
                 name: param_name,
             });
+            self.advance();
         }
 
         parameters

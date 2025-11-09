@@ -32,10 +32,7 @@ mod tests {
                 return_type: ReturnType::Void,
                 name: "main".to_owned(),
                 parameters: vec![],
-                body: SubroutineBody {
-                    vars: vec![],
-                    statements: vec![Statement::Return(None)],
-                },
+                body: SubroutineBody { vars: vec![], statements: vec![Statement::Return(None)] },
             }],
         };
 
@@ -69,10 +66,7 @@ mod tests {
                 name: "main".to_owned(),
                 parameters: vec![],
                 body: SubroutineBody {
-                    vars: vec![VarDec {
-                        jack_type: JackType::Int,
-                        name: "a".to_owned(),
-                    }],
+                    vars: vec![VarDec { jack_type: JackType::Int, name: "a".to_owned() }],
                     statements: vec![
                         Statement::Let {
                             var_name: "a".to_owned(),
@@ -83,6 +77,72 @@ mod tests {
                             },
                         },
                         Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        assert_eq!(expected, super::run(input_program.into()));
+    }
+
+    #[test]
+    fn parse_class_with_contructor() {
+        let input_program = r#"
+            class Point {
+                field int x, y;
+                constructor Point new(int argX, int argY) {
+                    let x = argX;
+                    let y = argY;
+                    return this;
+                }
+            }
+        "#;
+
+        let expected = Class {
+            name: "Point".into(),
+            vars: vec![
+                ClassVarDec {
+                    var_type: ClassVarType::Field,
+                    jack_type: JackType::Int,
+                    name: "x".into(),
+                },
+                ClassVarDec {
+                    var_type: ClassVarType::Field,
+                    jack_type: JackType::Int,
+                    name: "y".into(),
+                },
+            ],
+            routines: vec![SubroutineDec {
+                routine_type: RoutineType::Constructor,
+                return_type: ReturnType::Type(JackType::Class("Point".into())),
+                name: "new".into(),
+                parameters: vec![
+                    Parameter { jack_type: JackType::Int, name: "argX".into() },
+                    Parameter { jack_type: JackType::Int, name: "argY".into() },
+                ],
+                body: SubroutineBody {
+                    vars: vec![],
+                    statements: vec![
+                        Statement::Let {
+                            var_name: "x".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::VarName("argX".into()),
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Let {
+                            var_name: "y".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::VarName("argY".into()),
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Return(Some(Expression {
+                            term: Term::KeywordConst("this".into()),
+                            additional: vec![],
+                        })),
                     ],
                 },
             }],
