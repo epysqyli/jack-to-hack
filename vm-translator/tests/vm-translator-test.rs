@@ -1,14 +1,14 @@
-use std::{fs, path::PathBuf};
-
 #[test]
 fn fibonacci_is_translated_correctly() {
-    let expected: Vec<String> = fs::read_to_string("tests/fixtures/expected.asm")
+    let expected: Vec<String> = std::fs::read_to_string("tests/fixtures/expected.asm")
         .expect("Cannot read expected.asm file")
         .split("\n")
         .map(|cmd| cmd.to_string())
         .collect();
 
-    let actual = vm_translator::translate_vm_from_path(&PathBuf::from("tests/fixtures/vm-program"));
+    let vm_program =
+        vm_translator::fetch_vm_program(&std::path::PathBuf::from("tests/fixtures/vm-program"));
+    let actual = vm_translator::compile_vm_to_asm(vm_program);
 
     assert_eq!(expected, actual)
 }

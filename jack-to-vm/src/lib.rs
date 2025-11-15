@@ -1,13 +1,11 @@
 use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
-mod grammar;
-
-#[path = "syntax-analyzer.rs"]
-mod syntax_analyzer;
 
 #[path = "code-generator.rs"]
 mod code_generator;
+mod grammar;
+#[path = "syntax-analyzer.rs"]
+mod syntax_analyzer;
 
-#[allow(unused)]
 pub fn compile(program_path: &PathBuf) -> HashMap<String, Vec<String>> {
     let jack_classes = read_jack_classes_from_fs(program_path);
     let mut vm_outputs: HashMap<String, Vec<String>> = HashMap::new();

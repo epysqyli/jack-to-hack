@@ -1,17 +1,20 @@
+use hack_assembler::assembler::Assembler;
 use std::{env, fs, path::PathBuf};
 
-use hack_assembler::assembler::Assembler;
-use vm_translator::translate_vm_from_path;
-
-/* TODO:
- * Access the fs only for reading Jack files and for writing the .asm/.hack output.
- * The intermediate VM layer can operate entirely from memory. */
+/* jack -> vm -> asm -> hack */
 fn main() {
-    // vm -> asm -> hack
-    let vm_program_path = env::args().nth(1).expect("No vm program path provided!");
-    let vm_program_pathbuf = &PathBuf::from(vm_program_path.to_string());
-    let asm_program = translate_vm_from_path(vm_program_pathbuf);
+    let program_path = env::args().nth(1).expect("No program path provided!");
+    let program_pathbuf = &PathBuf::from(program_path.to_string());
+    let vm_instructions = jack_to_vm::compile(program_pathbuf);
 
+    if env::args().any(|arg| arg == "--with-vm") {
+        vm_instructions.iter().for_each(|(name, vm)| {
+            fs::write(format!("{}.vm", name.replace(".jack", "")), vm.join("\n"))
+                .expect("Writing .vm output failed");
+        });
+    }
+
+    let asm_program = vm_translator::compile_vm_to_asm(vm_instructions.into_values().collect());
     let current_dir = env::current_dir().unwrap();
     let output_path = format!("{}/source", current_dir.to_str().unwrap());
 

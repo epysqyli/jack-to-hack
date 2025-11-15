@@ -5,6 +5,24 @@ mod asm_generator;
 mod command;
 mod parser;
 
+pub fn compile_vm_to_asm(vm_instructions: Vec<Vec<String>>) -> Vec<String> {
+    // TODO: improve bootstrap when necessary.
+    // Should @LCL, @ARG, @THIS, @THAT be initialized?
+    let bootstrap_instructions = vec![
+        "call Sys.init 0".to_string(),
+        "label INFINITE_LOOP".to_string(),
+        "goto INFINITE_LOOP".to_string(),
+        "function Sys.init 0".to_string(),
+        "call Main.main 0".to_string(),
+        "return".to_string(),
+    ];
+
+    let instructions: Vec<String> = vm_instructions.into_iter().flat_map(|vm| vm).collect();
+    let commands = parser::parse(bootstrap_instructions.into_iter().chain(instructions).collect());
+
+    asm_generator::AsmGenerator::generate(commands)
+}
+
 fn read_vm_program_from_path(vm_program_path: &PathBuf) -> Vec<String> {
     match read_to_string(vm_program_path) {
         Err(err) => panic!("{err}"),
@@ -17,7 +35,7 @@ fn read_vm_program_from_path(vm_program_path: &PathBuf) -> Vec<String> {
     }
 }
 
-pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
+pub fn fetch_vm_program(vm_path: &PathBuf) -> Vec<Vec<String>> {
     let mut vm_file_paths: Vec<PathBuf> = vec![];
 
     if vm_path.is_dir() {
@@ -36,28 +54,5 @@ pub fn translate_vm_from_path(vm_path: &PathBuf) -> Vec<String> {
         vm_file_paths.push(vm_path.to_path_buf());
     }
 
-    // TODO: improve bootstrap when necessary.
-    // Should @LCL, @ARG, @THIS, @THAT be initialized?
-    let bootstrap_instructions = vec![
-        "call Sys.init 0".to_string(),
-        "label INFINITE_LOOP".to_string(),
-        "goto INFINITE_LOOP".to_string(),
-        "function Sys.init 0".to_string(),
-        "call Main.main 0".to_string(),
-        "return".to_string(),
-    ];
-
-    let vm_instructions: Vec<String> = vm_file_paths
-        .iter()
-        .flat_map(|vm_file_path| read_vm_program_from_path(&vm_file_path))
-        .collect();
-
-    let commands = parser::parse(
-        bootstrap_instructions
-            .into_iter()
-            .chain(vm_instructions)
-            .collect(),
-    );
-
-    asm_generator::AsmGenerator::generate(commands)
+    vm_file_paths.iter().map(|vm_file_path| read_vm_program_from_path(&vm_file_path)).collect()
 }
