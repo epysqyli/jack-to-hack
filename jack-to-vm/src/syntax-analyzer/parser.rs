@@ -82,9 +82,7 @@ impl Parser {
 
             match val.as_str() {
                 "static" | "field" => {
-                    self.eval_class_var_dec()
-                        .into_iter()
-                        .for_each(|c| class_var_decs.push(c));
+                    self.eval_class_var_dec().into_iter().for_each(|c| class_var_decs.push(c));
                 }
                 "constructor" | "function" | "method" => {
                     subroutine_decs.push(self.eval_subroutine_dec());
@@ -99,11 +97,7 @@ impl Parser {
             self.advance();
         }
 
-        Class {
-            name: class_name,
-            vars: class_var_decs,
-            routines: subroutine_decs,
-        }
+        Class { name: class_name, vars: class_var_decs, routines: subroutine_decs }
     }
 
     /* ('static'|'field') type varName (',' varName)* ';' */
@@ -227,10 +221,7 @@ impl Parser {
         self.advance();
         let param_name = self.eval_var_name();
 
-        parameters.push(Parameter {
-            jack_type: param_type.try_into().unwrap(),
-            name: param_name,
-        });
+        parameters.push(Parameter { jack_type: param_type.try_into().unwrap(), name: param_name });
 
         self.advance();
 
@@ -243,10 +234,8 @@ impl Parser {
             let param_type = self.eval_type();
             self.advance();
             let param_name = self.eval_var_name();
-            parameters.push(Parameter {
-                jack_type: param_type.try_into().unwrap(),
-                name: param_name,
-            });
+            parameters
+                .push(Parameter { jack_type: param_type.try_into().unwrap(), name: param_name });
             self.advance();
         }
 
@@ -274,9 +263,7 @@ impl Parser {
                     self.eval_var_dec().into_iter().for_each(|v| vars.push(v));
                 }
                 "let" | "if" | "do" | "while" | "return" => {
-                    self.eval_statements()
-                        .into_iter()
-                        .for_each(|s| statements.push(s));
+                    self.eval_statements().into_iter().for_each(|s| statements.push(s));
                 }
                 _ => {}
             }
@@ -297,10 +284,7 @@ impl Parser {
         self.advance();
         let var_name = self.eval_var_name();
 
-        var_decs.push(VarDec {
-            jack_type: var_type.try_into().unwrap(),
-            name: var_name,
-        });
+        var_decs.push(VarDec { jack_type: var_type.try_into().unwrap(), name: var_name });
 
         self.advance();
 
@@ -313,10 +297,8 @@ impl Parser {
                 self.advance();
                 let var_name = self.eval_var_name();
 
-                var_decs.push(VarDec {
-                    jack_type: var_decs[0].jack_type.to_owned(),
-                    name: var_name,
-                });
+                var_decs
+                    .push(VarDec { jack_type: var_decs[0].jack_type.to_owned(), name: var_name });
 
                 self.advance();
             }
@@ -360,15 +342,12 @@ impl Parser {
     /* 'return' expression? ';' */
     fn eval_return_statement(self: &mut Self) -> Statement {
         self.advance();
-        match self.current() {
-            Token::Symbol(val) => {
-                if val.as_str() == "-" || val.as_str() == "~" {
-                    Statement::Return(Some(self.eval_expression()))
-                } else {
-                    Statement::Return(None)
-                }
-            }
-            _ => Statement::Return(Some(self.eval_expression())),
+        if let Token::Symbol(val) = self.current()
+            && val.as_str() == ";"
+        {
+            Statement::Return(None)
+        } else {
+            Statement::Return(Some(self.eval_expression()))
         }
     }
 
@@ -385,9 +364,21 @@ impl Parser {
 
         self.advance();
 
+        /* TODO: avoid having to use either next or ahead(2) depending
+         * on whether the previous statment is `let` or `return` */
         let else_statements = if let Token::Keyword(val) = self.next()
             && val.as_str() == "else"
         {
+            self.advance();
+            self.advance();
+            self.advance();
+            let else_statements = self.eval_statements();
+            self.advance();
+            Some(else_statements)
+        } else if let Token::Keyword(val) = self.ahead(2)
+            && val.as_str() == "else"
+        {
+            self.advance();
             self.advance();
             self.advance();
             self.advance();
@@ -398,11 +389,7 @@ impl Parser {
             None
         };
 
-        Statement::If {
-            exp,
-            statements,
-            else_statements,
-        }
+        Statement::If { exp, statements, else_statements }
     }
 
     /* 'let' varName ('[' expression ']')? '=' expression ';' */
@@ -425,11 +412,7 @@ impl Parser {
         let exp = self.eval_expression();
         self.advance();
 
-        Statement::Let {
-            var_name,
-            array_access,
-            exp,
-        }
+        Statement::Let { var_name, array_access, exp }
     }
 
     /* 'while' '(' expression ')' '{' statements '}' */
@@ -506,10 +489,7 @@ impl Parser {
                     let unary_op = self.eval_unary_op();
                     self.advance();
                     let term = self.eval_term();
-                    Term::Unary {
-                        op: unary_op,
-                        term: Box::new(term),
-                    }
+                    Term::Unary { op: unary_op, term: Box::new(term) }
                 }
                 _ => panic!("Not a term"),
             },
@@ -526,10 +506,7 @@ impl Parser {
                             let exp = self.eval_expression();
                             self.advance();
 
-                            Term::ArrayAccess {
-                                var_name: var_name,
-                                exp: exp.into(),
-                            }
+                            Term::ArrayAccess { var_name: var_name, exp: exp.into() }
                         }
                         _ => Term::VarName(self.eval_var_name()),
                     },
@@ -573,11 +550,7 @@ impl Parser {
 
         self.advance();
 
-        Term::Call(SubroutineCall {
-            callee: callee,
-            routine_name: routine_name,
-            expressions: exps,
-        })
+        Term::Call(SubroutineCall { callee: callee, routine_name: routine_name, expressions: exps })
     }
 
     /* '+' | '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=' */
@@ -626,6 +599,10 @@ impl Parser {
 
     fn next(self: &Self) -> &Token {
         &self.tokens[self.index + 1]
+    }
+
+    fn ahead(self: &Self, pos: usize) -> &Token {
+        &self.tokens[self.index + pos]
     }
 
     fn advance(self: &mut Self) {
@@ -749,11 +726,7 @@ mod tests {
             Symbol("}".into()),
         ];
 
-        let expected = Class {
-            name: "Main".into(),
-            vars: vec![],
-            routines: vec![],
-        };
+        let expected = Class { name: "Main".into(), vars: vec![], routines: vec![] };
 
         assert_eq!(expected, super::Parser::new(tokens).eval_class());
     }
@@ -808,10 +781,7 @@ mod tests {
             routine_type: RoutineType::Function,
             return_type: ReturnType::Type(JackType::Int),
             name: "incr".into(),
-            parameters: vec![Parameter {
-                jack_type: JackType::Int,
-                name: "a".into(),
-            }],
+            parameters: vec![Parameter { jack_type: JackType::Int, name: "a".into() }],
             body: SubroutineBody {
                 vars: vec![],
                 statements: vec![Statement::Return(Some(Expression {
@@ -845,22 +815,13 @@ mod tests {
 
         let expected = SubroutineBody {
             vars: vec![
-                VarDec {
-                    jack_type: JackType::Int,
-                    name: "localA".into(),
-                },
-                VarDec {
-                    jack_type: JackType::Boolean,
-                    name: "localB".into(),
-                },
+                VarDec { jack_type: JackType::Int, name: "localA".into() },
+                VarDec { jack_type: JackType::Boolean, name: "localB".into() },
             ],
             statements: vec![Statement::Let {
                 var_name: "localA".into(),
                 array_access: None,
-                exp: Expression {
-                    term: Term::IntConst(1),
-                    additional: vec![],
-                },
+                exp: Expression { term: Term::IntConst(1), additional: vec![] },
             }],
         };
 
@@ -895,11 +856,7 @@ mod tests {
 
     #[test]
     fn parse_return_statement() {
-        let tokens = vec![
-            Keyword("return".into()),
-            Identifier("a".into()),
-            Symbol(";".into()),
-        ];
+        let tokens = vec![Keyword("return".into()), Identifier("a".into()), Symbol(";".into())];
 
         let expected = Statement::Return(Some(Expression {
             term: Term::VarName("a".into()),
@@ -937,6 +894,7 @@ mod tests {
             Identifier("a".into()),
             Symbol("*".into()),
             IntConst("2".into()),
+            Symbol(";".into()),
             Symbol("}".into()),
         ];
 

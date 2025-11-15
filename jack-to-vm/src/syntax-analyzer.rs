@@ -150,4 +150,114 @@ mod tests {
 
         assert_eq!(expected, super::run(input_program.into()));
     }
+
+    #[test]
+    fn parse_class_with_if_statement() {
+        let input_program = r#"
+            class Example {
+                function int run(int a) {
+                    if (a < 2) {
+                        return a;
+                    } else {
+                        return a + 1;
+                    }
+                }
+            }
+        "#;
+
+        let expected = Class {
+            name: "Example".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Type(JackType::Int),
+                name: "run".into(),
+                parameters: vec![Parameter { name: "a".into(), jack_type: JackType::Int }],
+                body: SubroutineBody {
+                    vars: vec![],
+                    statements: vec![Statement::If {
+                        exp: Expression {
+                            term: Term::VarName("a".into()),
+                            additional: vec![(Operation::LessThan, Term::IntConst(2))],
+                        },
+                        statements: vec![Statement::Return(Some(Expression {
+                            term: Term::VarName("a".into()),
+                            additional: vec![],
+                        }))],
+                        else_statements: Some(vec![Statement::Return(Some(Expression {
+                            term: Term::VarName("a".into()),
+                            additional: vec![(Operation::Plus, Term::IntConst(1))],
+                        }))]),
+                    }],
+                },
+            }],
+        };
+
+        assert_eq!(expected, super::run(input_program.into()));
+    }
+
+    #[test]
+    #[ignore = "WIP"]
+    fn parse_fibonacci() {
+        let input_program = r#"
+            class Fibonacci {
+                function int run(int n) {
+                    if (n < 2) {
+                        return n;
+                    } else {
+                        return (Fibonacci.run(n - 2) + Fibonacci.run(n - 1));
+                    }
+                }
+            }
+        "#;
+
+        let _expected = Class {
+            name: "Fibonacci".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Type(JackType::Int),
+                name: "run".into(),
+                parameters: vec![Parameter { name: "n".into(), jack_type: JackType::Int }],
+                body: SubroutineBody {
+                    vars: vec![],
+                    statements: vec![Statement::If {
+                        exp: Expression {
+                            term: Term::VarName("n".into()),
+                            additional: vec![(Operation::LessThan, Term::IntConst(2))],
+                        },
+                        statements: vec![Statement::Return(Some(Expression {
+                            term: Term::VarName("n".into()),
+                            additional: vec![],
+                        }))],
+                        else_statements: Some(vec![Statement::Return(Some(Expression {
+                            term: Term::Call(SubroutineCall {
+                                callee: Some("Fibonacci".into()),
+                                routine_name: "run".into(),
+                                expressions: vec![Expression {
+                                    term: Term::VarName("n".into()),
+                                    additional: vec![(Operation::Minus, Term::IntConst(2))],
+                                }],
+                            }),
+                            additional: vec![(
+                                Operation::Plus,
+                                Term::Call(SubroutineCall {
+                                    callee: Some("Fibonacci".into()),
+                                    routine_name: "run".into(),
+                                    expressions: vec![Expression {
+                                        term: Term::VarName("n".into()),
+                                        additional: vec![(Operation::Minus, Term::IntConst(1))],
+                                    }],
+                                }),
+                            )],
+                        }))]),
+                    }],
+                },
+            }],
+        };
+
+        dbg!(super::run(input_program.into()));
+
+        // assert_eq!(expected, super::run(input_program.into()));
+    }
 }
