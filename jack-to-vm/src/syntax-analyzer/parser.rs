@@ -168,10 +168,7 @@ impl Parser {
 
         match self.current() {
             Token::Symbol(_) => { /* do nothing */ }
-            _ => {
-                parameters = self.eval_parameter_list();
-                // self.advance();
-            }
+            _ => parameters = self.eval_parameter_list(),
         }
 
         self.advance();
@@ -184,7 +181,9 @@ impl Parser {
             }
         }
 
-        self.advance();
+        if self.index < self.tokens.len() - 1 {
+            self.advance();
+        }
 
         SubroutineDec {
             routine_type: routine_type.try_into().unwrap(),
@@ -572,15 +571,16 @@ impl Parser {
     fn eval_expression_list(self: &mut Self) -> Vec<Expression> {
         let mut exps: Vec<Expression> = vec![];
 
-        self.next();
+        self.advance();
         exps.push(self.eval_expression());
 
-        while let Token::Symbol(val) = self.current() {
+        while let Token::Symbol(val) = self.next() {
             if val.as_str() == ")" {
                 break;
             }
 
             if val.as_str() == "," {
+                self.advance();
                 self.advance();
                 exps.push(self.eval_expression());
             }
@@ -983,13 +983,7 @@ mod tests {
         let expected = Statement::Do(SubroutineCall {
             callee: Some("AnotherClass".into()),
             routine_name: "incr".into(),
-            expressions: vec![Expression {
-                term: Term::Expression(Box::new(Expression {
-                    term: Term::VarName("a".into()),
-                    additional: vec![],
-                })),
-                additional: vec![],
-            }],
+            expressions: vec![Expression { term: Term::VarName("a".into()), additional: vec![] }],
         });
 
         assert_eq!(expected, super::Parser::new(tokens).eval_do_statement());
