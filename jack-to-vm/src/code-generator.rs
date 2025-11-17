@@ -150,8 +150,8 @@ impl<'a> CodeGenerator<'a> {
                 Operation::And => self.vm.push("and".into()),
                 Operation::Or => self.vm.push("or".into()),
                 Operation::Not => self.vm.push("neg".into()),
-                Operation::Multiply => panic!("[WIP] Operation::Multiply"),
-                Operation::Divide => panic!("[WIP] Operation::Divide"),
+                Operation::Multiply => self.vm.push("call Math.multiply 2".into()),
+                Operation::Divide => self.vm.push("call Math.divide 2".into()),
             };
         });
     }
@@ -178,12 +178,11 @@ impl<'a> CodeGenerator<'a> {
             }
             Term::Call(call) => self.compile_routine_call(call),
             Term::StrConst(val) => {
-                /* TODO(?): reexamine after OS implementation */
                 self.vm.push(format!("push constant {}", val.len()));
                 self.vm.push("call String.new 1".into());
                 val.chars().for_each(|c| {
                     self.vm.push(format!("push constant {}", c as u8));
-                    self.vm.push("call String.appendChar 1".into());
+                    self.vm.push("call String.appendChar 2".into());
                 });
             }
             Term::ArrayAccess { var_name, exp } => {
@@ -990,6 +989,65 @@ mod tests {
             "push argument 0",
             "push constant 1",
             "call Another.execute 2",
+            "return",
+        ];
+
+        assert_eq!(expected, super::compile(class));
+    }
+
+    #[test]
+    fn compile_output_print_string() {
+        /*
+         * class Main {
+         *     function void main() {
+         *         do Output.printString("Hello");
+         *         return;
+         *     }
+         * }
+         */
+        let class = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Void,
+                name: "main".into(),
+                parameters: vec![],
+                body: SubroutineBody {
+                    vars: vec![],
+                    statements: vec![
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printString".into(),
+                            expressions: vec![Expression {
+                                term: Term::StrConst("Hello".into()),
+                                additional: vec![],
+                            }],
+                        }),
+                        Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        /* Term::StrConst are initialized with String calls under the hood */
+        let expected = vec![
+            "function Main.main 0",
+            "push constant 5",
+            "call String.new 1",
+            "push constant 72",
+            "call String.appendChar 2",
+            "push constant 101",
+            "call String.appendChar 2",
+            "push constant 108",
+            "call String.appendChar 2",
+            "push constant 108",
+            "call String.appendChar 2",
+            "push constant 111",
+            "call String.appendChar 2",
+            "call Output.printString 1",
+            "pop temp 0",
+            "push constant 0",
             "return",
         ];
 
