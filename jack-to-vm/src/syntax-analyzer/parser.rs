@@ -260,14 +260,13 @@ impl Parser {
             match val.as_str() {
                 "var" => {
                     self.eval_var_dec().into_iter().for_each(|v| vars.push(v));
+                    self.advance();
                 }
                 "let" | "if" | "do" | "while" | "return" => {
                     self.eval_statements().into_iter().for_each(|s| statements.push(s));
                 }
                 _ => {}
             }
-
-            self.advance();
         }
 
         SubroutineBody { vars, statements }
@@ -314,10 +313,12 @@ impl Parser {
     fn eval_statements(self: &mut Self) -> Vec<Statement> {
         let mut statements: Vec<Statement> = vec![];
 
-        if let Token::Keyword(val) = self.current() {
+        while let Token::Keyword(val) = self.current() {
             if ["if", "let", "do", "while", "return"].contains(&val.as_str()) {
                 statements.push(self.eval_statement());
             }
+
+            self.advance();
         }
 
         statements
@@ -361,19 +362,15 @@ impl Parser {
         self.advance();
         let statements = self.eval_statements();
 
-        self.advance();
-
         /* TODO: avoid having to use either next or ahead(2) depending
-         * on whether the previous statment is `let` or `return` */
+         * on whether the previous statement is `let` or `return` */
         let else_statements = if let Token::Keyword(val) = self.next()
             && val.as_str() == "else"
         {
             self.advance();
             self.advance();
             self.advance();
-            let else_statements = self.eval_statements();
-            self.advance();
-            Some(else_statements)
+            Some(self.eval_statements())
         } else if let Token::Keyword(val) = self.ahead(2)
             && val.as_str() == "else"
         {
@@ -381,9 +378,7 @@ impl Parser {
             self.advance();
             self.advance();
             self.advance();
-            let else_statements = self.eval_statements();
-            self.advance();
-            Some(else_statements)
+            Some(self.eval_statements())
         } else {
             None
         };
@@ -407,6 +402,10 @@ impl Parser {
             None
         };
 
+        if array_access.is_some() {
+            self.advance();
+        }
+
         self.advance();
         let exp = self.eval_expression();
         self.advance();
@@ -423,9 +422,9 @@ impl Parser {
         self.advance();
         self.advance();
         self.advance();
+
         let statements = self.eval_statements();
 
-        self.advance();
         Statement::While { exp, statements }
     }
 

@@ -362,4 +362,163 @@ mod tests {
 
         assert_eq!(expected, super::run(input_program.into()));
     }
+
+    #[test]
+    fn parse_average_program() {
+        let input = r#"
+            class Main {
+                function void main() {
+                    var Array a;
+                    var int length;
+                    var int i, sum;
+
+                    let length = Keyboard.readInt("How many numbers? ");
+                    let a = Array.new(length); // constructs the array
+
+                    let i = 0;
+                    while (i < length) {
+                        let a[i] = Keyboard.readInt("Enter a number: ");
+                        let sum = sum + a[i];
+                        let i = i + 1;
+                    }
+
+                    do Output.printString("The average is ");
+                    do Output.printInt(sum / length);
+                    return;
+                }
+            }
+        "#;
+
+        let expected = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Void,
+                name: "main".into(),
+                parameters: vec![],
+                body: SubroutineBody {
+                    vars: vec![
+                        VarDec { jack_type: JackType::Class("Array".into()), name: "a".into() },
+                        VarDec { jack_type: JackType::Int, name: "length".into() },
+                        VarDec { jack_type: JackType::Int, name: "i".into() },
+                        VarDec { jack_type: JackType::Int, name: "sum".into() },
+                    ],
+                    statements: vec![
+                        Statement::Let {
+                            var_name: "length".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::Call(SubroutineCall {
+                                    callee: Some("Keyboard".into()),
+                                    routine_name: "readInt".into(),
+                                    expressions: vec![Expression {
+                                        term: Term::StrConst("How many numbers? ".into()),
+                                        additional: vec![],
+                                    }],
+                                }),
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::Call(SubroutineCall {
+                                    callee: Some("Array".into()),
+                                    routine_name: "new".into(),
+                                    expressions: vec![Expression {
+                                        term: Term::VarName("length".into()),
+                                        additional: vec![],
+                                    }],
+                                }),
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Let {
+                            var_name: "i".into(),
+                            array_access: None,
+                            exp: Expression { term: Term::IntConst(0), additional: vec![] },
+                        },
+                        Statement::While {
+                            exp: Expression {
+                                term: Term::VarName("i".into()),
+                                additional: vec![(
+                                    Operation::LessThan,
+                                    Term::VarName("length".into()),
+                                )],
+                            },
+                            statements: vec![
+                                Statement::Let {
+                                    var_name: "a".into(),
+                                    array_access: Some(Expression {
+                                        term: Term::VarName("i".into()),
+                                        additional: vec![],
+                                    }),
+                                    exp: Expression {
+                                        term: Term::Call(SubroutineCall {
+                                            callee: Some("Keyboard".into()),
+                                            routine_name: "readInt".into(),
+                                            expressions: vec![Expression {
+                                                term: Term::StrConst("Enter a number: ".into()),
+                                                additional: vec![],
+                                            }],
+                                        }),
+                                        additional: vec![],
+                                    },
+                                },
+                                Statement::Let {
+                                    var_name: "sum".into(),
+                                    array_access: None,
+                                    exp: Expression {
+                                        term: Term::VarName("sum".into()),
+                                        additional: vec![(
+                                            Operation::Plus,
+                                            Term::ArrayAccess {
+                                                var_name: "a".into(),
+                                                exp: Box::new(Expression {
+                                                    term: Term::VarName("i".into()),
+                                                    additional: vec![],
+                                                }),
+                                            },
+                                        )],
+                                    },
+                                },
+                                Statement::Let {
+                                    var_name: "i".into(),
+                                    array_access: None,
+                                    exp: Expression {
+                                        term: Term::VarName("i".into()),
+                                        additional: vec![(Operation::Plus, Term::IntConst(1))],
+                                    },
+                                },
+                            ],
+                        },
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printString".into(),
+                            expressions: vec![Expression {
+                                term: Term::StrConst("The average is ".into()),
+                                additional: vec![],
+                            }],
+                        }),
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printInt".into(),
+                            expressions: vec![Expression {
+                                term: Term::VarName("sum".into()),
+                                additional: vec![(
+                                    Operation::Divide,
+                                    Term::VarName("length".into()),
+                                )],
+                            }],
+                        }),
+                        Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        assert_eq!(expected, super::run(input.into()));
+    }
 }
