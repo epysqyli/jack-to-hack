@@ -190,6 +190,8 @@ impl<'a> CodeGenerator<'a> {
                 self.vm.push(format!("push {} {}", entry.kind.vm(), entry.index));
                 self.compile_expression(exp);
                 self.vm.push("add".into());
+                self.vm.push("pop pointer 1".into());
+                self.vm.push("push that 0".into());
             }
             Term::KeywordConst(val) => match val.as_str() {
                 "true" => self.vm.push("push constant -1".into()),
@@ -1233,28 +1235,24 @@ mod tests {
 
     #[test]
     fn compile_array_init_and_access() {
-        /*
-         * class Example {
-         *     function void execute(Array b) {
+        /* class Main {
+         *     function void main() {
          *         var Array a;
          *         let a = Array.new(10);
-         *         let a[5] = b[6];
-         *         let a[4] = 1;
+         *         let a[0] = 19;
+         *         do Output.printInt(a[0]);
          *         return;
          *     }
          * }
          */
         let class = Class {
-            name: "Example".into(),
+            name: "Main".into(),
             vars: vec![],
             routines: vec![SubroutineDec {
+                name: "main".into(),
                 routine_type: RoutineType::Function,
                 return_type: ReturnType::Void,
-                name: "execute".into(),
-                parameters: vec![Parameter {
-                    name: "b".into(),
-                    jack_type: JackType::Class("Array".into()),
-                }],
+                parameters: vec![],
                 body: SubroutineBody {
                     vars: vec![VarDec {
                         name: "a".into(),
@@ -1279,28 +1277,25 @@ mod tests {
                         Statement::Let {
                             var_name: "a".into(),
                             array_access: Some(Expression {
-                                term: Term::IntConst(5),
+                                term: Term::IntConst(0),
                                 additional: vec![],
                             }),
-                            exp: Expression {
+                            exp: Expression { term: Term::IntConst(19), additional: vec![] },
+                        },
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printInt".into(),
+                            expressions: vec![Expression {
                                 term: Term::ArrayAccess {
-                                    var_name: "b".into(),
+                                    var_name: "a".into(),
                                     exp: Box::new(Expression {
-                                        term: Term::IntConst(6),
+                                        term: Term::IntConst(0),
                                         additional: vec![],
                                     }),
                                 },
                                 additional: vec![],
-                            },
-                        },
-                        Statement::Let {
-                            var_name: "a".into(),
-                            array_access: Some(Expression {
-                                term: Term::IntConst(4),
-                                additional: vec![],
-                            }),
-                            exp: Expression { term: Term::IntConst(1), additional: vec![] },
-                        },
+                            }],
+                        }),
                         Statement::Return(None),
                     ],
                 },
@@ -1308,34 +1303,25 @@ mod tests {
         };
 
         let expected = vec![
-            /* function declaration */
-            "function Example.execute 1",
-            /* array call */
+            "function Main.main 1",
             "push constant 10",
             "call Array.new 1",
             "pop local 0",
-            /* a[5] */
             "push local 0",
-            "push constant 5",
+            "push constant 0",
             "add",
-            /* b[6] */
-            "push argument 0",
-            "push constant 6",
-            "add",
-            "pop temp 0",    /* pop (b + 6) to temp 0 */
-            "pop pointer 1", /* pop (a + 5) to pointer 1, i.e. @THAT */
-            "push temp 0",   /* push (b + 6) onto the stack */
-            "pop that 0",    /* pop (b + 6) to that 0 */
-            /* a[4] = 1 */
-            "push local 0",
-            "push constant 4",
-            "add",
-            "push constant 1",
+            "push constant 19",
             "pop temp 0",
             "pop pointer 1",
             "push temp 0",
             "pop that 0",
-            /* return */
+            "push local 0",
+            "push constant 0",
+            "add",
+            "pop pointer 1",
+            "push that 0",
+            "call Output.printInt 1",
+            "pop temp 0",
             "push constant 0",
             "return",
         ];
@@ -1387,13 +1373,13 @@ mod tests {
             "push constant 4",   /* len of 'test' */
             "call String.new 1", /* string constructor pushes on the stack the new string address */
             "push constant 116",
-            "call String.appendChar 1",
+            "call String.appendChar 2",
             "push constant 101",
-            "call String.appendChar 1",
+            "call String.appendChar 2",
             "push constant 115",
-            "call String.appendChar 1",
+            "call String.appendChar 2",
             "push constant 116",
-            "call String.appendChar 1",
+            "call String.appendChar 2",
             "pop local 0", /* assign address returned for the string to local var `s` */
             "push constant 0", /* return void */
             "return",
