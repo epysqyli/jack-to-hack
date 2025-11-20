@@ -197,7 +197,8 @@ impl<'a> CodeGenerator<'a> {
                 "true" => self.vm.push("push constant -1".into()),
                 "false" => self.vm.push("push constant 0".into()),
                 "this" => self.vm.push("push pointer 0".into()),
-                _ => panic!("[WIP] Term::KeywordConst 'null'"),
+                "null" => self.vm.push("push constant 0".into()), /* TODO: is this correct? */
+                _ => panic!("[WIP] Term::KeywordConst not handled"),
             },
         }
     }

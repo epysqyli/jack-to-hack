@@ -521,4 +521,25 @@ mod tests {
 
         assert_eq!(expected, super::run(input.into()));
     }
+
+    #[test]
+    fn compile_multiple_functions() {
+        let input = r#"
+            class Main {
+                function void main() {
+                    return;
+                }
+
+                function int first() {
+                    return 1;
+                }
+
+                function void second() {
+                    return;
+                }
+            }
+        "#;
+
+        assert_eq!(3, super::run(input.into()).routines.len());
+    }
 }

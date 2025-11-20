@@ -83,6 +83,7 @@ impl Parser {
             match val.as_str() {
                 "static" | "field" => {
                     self.eval_class_var_dec().into_iter().for_each(|c| class_var_decs.push(c));
+                    self.advance();
                 }
                 "constructor" | "function" | "method" => {
                     subroutine_decs.push(self.eval_subroutine_dec());
@@ -93,8 +94,6 @@ impl Parser {
             if self.index == self.tokens.len() - 1 {
                 break;
             }
-
-            self.advance();
         }
 
         Class { name: class_name, vars: class_var_decs, routines: subroutine_decs }
@@ -347,7 +346,9 @@ impl Parser {
         {
             Statement::Return(None)
         } else {
-            Statement::Return(Some(self.eval_expression()))
+            let exps = self.eval_expression();
+            self.advance();
+            Statement::Return(Some(exps))
         }
     }
 
@@ -615,7 +616,7 @@ mod tests {
     use super::Token::*;
 
     #[test]
-    fn parse_class() {
+    fn parse_basic_class() {
         let token_stream = vec![
             //
             // class Example {
