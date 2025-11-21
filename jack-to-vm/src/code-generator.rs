@@ -80,43 +80,47 @@ impl<'a> CodeGenerator<'a> {
                     self.vm.push("pop that 0".into());
                 }
             },
+            /* TODO: optimize branch handling setup ? */
             Statement::If { exp, statements, else_statements } => {
+                let counter = self.label_counter;
+                self.label_counter += 1;
+
                 self.compile_expression(exp);
-                self.vm.push(format!("if-goto IfTrue${}", self.label_counter));
-                self.vm.push(format!("goto IfFalse${}", self.label_counter));
+                self.vm.push(format!("if-goto IfTrue${}", counter));
+                self.vm.push(format!("goto IfFalse${}", counter));
 
                 /* handle TRUE branch */
-                self.vm.push(format!("label IfTrue${}", self.label_counter));
+                self.vm.push(format!("label IfTrue${}", counter));
                 statements.iter().for_each(|s| self.compile_statement(s));
-                self.vm.push(format!("goto IfStatementComplete${}", self.label_counter));
+                self.vm.push(format!("goto IfDone${}", counter));
 
                 /* handle the optional FALSE branch */
+                self.vm.push(format!("label IfFalse${}", counter));
                 if let Some(else_statements) = else_statements {
-                    self.vm.push(format!("label IfFalse${}", self.label_counter));
                     else_statements.iter().for_each(|s| self.compile_statement(s));
-                    self.vm.push(format!("goto IfStatementComplete${}", self.label_counter));
-                } else {
-                    self.vm.push(format!("label IfFalse${}", self.label_counter));
-                    self.vm.push(format!("goto IfStatementComplete${}", self.label_counter));
                 }
 
-                self.vm.push(format!("label IfStatementComplete${}", self.label_counter));
-                self.label_counter += 1;
+                self.vm.push(format!("goto IfDone${}", counter));
+                self.vm.push(format!("label IfDone${}", counter));
             }
+            /* TODO: optimize branch handling setup ? */
             Statement::While { exp, statements } => {
+                let counter = self.label_counter;
+                self.label_counter += 1;
+
                 /* define condition */
-                self.vm.push(format!("label WhileCondition${}", self.label_counter));
+                self.vm.push(format!("label WhileCondition${}", counter));
                 self.compile_expression(exp);
 
                 /* execute the loop statements or break out of it */
-                self.vm.push(format!("if-goto WhileStatements${}", self.label_counter));
-                self.vm.push(format!("goto WhileDone${}", self.label_counter));
-                self.vm.push(format!("label WhileStatements${}", self.label_counter));
+                self.vm.push(format!("if-goto WhileStatements${}", counter));
+                self.vm.push(format!("goto WhileDone${}", counter));
+                self.vm.push(format!("label WhileStatements${}", counter));
                 statements.iter().for_each(|statement| self.compile_statement(statement));
-                self.vm.push(format!("goto WhileCondition${}", self.label_counter));
+                self.vm.push(format!("goto WhileCondition${}", counter));
 
                 /* resume execution after the while statement is complete */
-                self.vm.push(format!("label WhileDone${}", self.label_counter));
+                self.vm.push(format!("label WhileDone${}", counter));
             }
             Statement::Do(call) => {
                 self.compile_routine_call(call);
@@ -194,7 +198,11 @@ impl<'a> CodeGenerator<'a> {
                 self.vm.push("push that 0".into());
             }
             Term::KeywordConst(val) => match val.as_str() {
-                "true" => self.vm.push("push constant -1".into()),
+                "true" => {
+                    /* TODO: should all negative values be handled this way? */
+                    self.vm.push("push constant 1".into());
+                    self.vm.push("neg".into());
+                }
                 "false" => self.vm.push("push constant 0".into()),
                 "this" => self.vm.push("push pointer 0".into()),
                 "null" => self.vm.push("push constant 0".into()), /* TODO: is this correct? */
@@ -583,25 +591,21 @@ mod tests {
 
         let expected = vec![
             "function Example.greater 1",
-            /* if (a < b) */
             "push argument 0",
             "push argument 1",
             "lt",
             "if-goto IfTrue$0",
             "goto IfFalse$0",
-            /* let res = true; */
             "label IfTrue$0",
-            "push constant -1",
+            "push constant 1",
+            "neg",
             "pop local 0",
-            "goto IfStatementComplete$0",
-            /* else { let res = false; } */
+            "goto IfDone$0",
             "label IfFalse$0",
             "push constant 0",
             "pop local 0",
-            "goto IfStatementComplete$0",
-            /* continuation after Statement::If */
-            "label IfStatementComplete$0",
-            /* return res; */
+            "goto IfDone$0",
+            "label IfDone$0",
             "push local 0",
             "return",
         ];
@@ -1383,6 +1387,126 @@ mod tests {
             "call String.appendChar 2",
             "pop local 0", /* assign address returned for the string to local var `s` */
             "push constant 0", /* return void */
+            "return",
+        ];
+
+        assert_eq!(expected, super::compile(class));
+    }
+
+    #[test]
+    fn compile_nested_if_statements() {
+        /*
+         * class Main {
+         *     function void main() {
+         *         var int a;
+         *         let a = 6;
+         *         if (a < 10) {
+         *             if (a > 5) {
+         *                  let a = a + 1;
+         *             } else {
+         *                  let a = a + 2;
+         *             }
+         *         }
+         *         do Output.printInt(a);
+         *         return;
+         *     }
+         * }
+         */
+        let class = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                name: "main".into(),
+                routine_type: RoutineType::Function,
+                return_type: ReturnType::Void,
+                parameters: vec![],
+                body: SubroutineBody {
+                    vars: vec![VarDec { name: "a".into(), jack_type: JackType::Int }],
+                    statements: vec![
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression { term: Term::IntConst(6), additional: vec![] },
+                        },
+                        Statement::If {
+                            exp: Expression {
+                                term: Term::VarName("a".into()),
+                                additional: vec![(Operation::LessThan, Term::IntConst(10))],
+                            },
+                            statements: vec![Statement::If {
+                                exp: Expression {
+                                    term: Term::VarName("a".into()),
+                                    additional: vec![(Operation::GreaterThan, Term::IntConst(5))],
+                                },
+                                statements: vec![Statement::Let {
+                                    var_name: "a".into(),
+                                    array_access: None,
+                                    exp: Expression {
+                                        term: Term::VarName("a".into()),
+                                        additional: vec![(Operation::Plus, Term::IntConst(1))],
+                                    },
+                                }],
+                                else_statements: Some(vec![Statement::Let {
+                                    var_name: "a".into(),
+                                    array_access: None,
+                                    exp: Expression {
+                                        term: Term::VarName("a".into()),
+                                        additional: vec![(Operation::Plus, Term::IntConst(2))],
+                                    },
+                                }]),
+                            }],
+                            else_statements: None,
+                        },
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printInt".into(),
+                            expressions: vec![Expression {
+                                term: Term::VarName("a".into()),
+                                additional: vec![],
+                            }],
+                        }),
+                        Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        let expected = vec![
+            "function Main.main 1",
+            "push constant 6",
+            "pop local 0",
+            "push local 0",
+            "push constant 10",
+            "lt",
+            "if-goto IfTrue$0",
+            "goto IfFalse$0",
+            "label IfTrue$0",
+            "push local 0",
+            "push constant 5",
+            "gt",
+            "if-goto IfTrue$1",
+            "goto IfFalse$1",
+            "label IfTrue$1",
+            "push local 0",
+            "push constant 1",
+            "add",
+            "pop local 0",
+            "goto IfDone$1",
+            "label IfFalse$1",
+            "push local 0",
+            "push constant 2",
+            "add",
+            "pop local 0",
+            "goto IfDone$1",
+            "label IfDone$1",
+            "goto IfDone$0",
+            "label IfFalse$0",
+            "goto IfDone$0",
+            "label IfDone$0",
+            "push local 0",
+            "call Output.printInt 1",
+            "pop temp 0",
+            "push constant 0",
             "return",
         ];
 
