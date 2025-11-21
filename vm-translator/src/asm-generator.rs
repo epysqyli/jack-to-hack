@@ -14,10 +14,7 @@ pub(super) struct AsmGenerator {
 
 impl AsmGenerator {
     pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
-        let mut asm_generator = Self {
-            instructions: vec![],
-            function_calls: HashMap::new(),
-        };
+        let mut asm_generator = Self { instructions: vec![], function_calls: HashMap::new() };
 
         // Set SP to 256 as first bootstrapping step
         #[cfg(not(test))]
@@ -105,13 +102,11 @@ impl AsmGenerator {
                 self.add("D=A");
                 self.push_d_reg_to_stack();
 
-                ["@LCL", "@ARG", "@THIS", "@THAT"]
-                    .iter()
-                    .for_each(|mem_segment| {
-                        self.add(mem_segment);
-                        self.add("D=M");
-                        self.push_d_reg_to_stack();
-                    });
+                ["@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|mem_segment| {
+                    self.add(mem_segment);
+                    self.add("D=M");
+                    self.push_d_reg_to_stack();
+                });
 
                 self.add("@SP");
                 self.add("D=M");
@@ -371,9 +366,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -398,9 +391,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -425,9 +416,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -452,9 +441,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -667,13 +654,9 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
             vec!["@10", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -756,9 +739,7 @@ mod tests {
                 "@SP", "M=M-1", "A=M", "D=M", "@R13", "M=D", "@2", "D=A", "@LCL", "A=D+M", "D=A",
                 "@R14", "M=D", "@R13", "D=M", "@R14", "A=M", "M=D",
             ],
-            vec![
-                "@2", "D=A", "@LCL", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            ],
+            vec!["@2", "D=A", "@LCL", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -885,10 +866,7 @@ mod tests {
 
         assert_commands_eq(
             vec![label_definition, goto_label],
-            vec![
-                vec!["(TestFunction$TestLabel)"],
-                vec!["@TestFunction$TestLabel", "0;JMP"],
-            ],
+            vec![vec!["(TestFunction$TestLabel)"], vec!["@TestFunction$TestLabel", "0;JMP"]],
         );
     }
 
@@ -908,10 +886,7 @@ mod tests {
         let expected_asm = vec![vec!["(FirstFunction$Test)"], vec!["(SecondFunction$Test)"]];
 
         assert_commands_eq(
-            vm_commands
-                .into_iter()
-                .map(|vm_cmd| vm_cmd)
-                .collect::<Vec<Command>>(),
+            vm_commands.into_iter().map(|vm_cmd| vm_cmd).collect::<Vec<Command>>(),
             expected_asm,
         );
     }
@@ -929,14 +904,7 @@ mod tests {
 
         let expected_asm = vec![
             vec!["(TestFunction$TestLabel)"],
-            vec![
-                "@SP",
-                "M=M-1",
-                "A=M",
-                "D=M",
-                "@TestFunction$TestLabel",
-                "D;JNE",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@TestFunction$TestLabel", "D;JNE"],
         ];
 
         assert_commands_eq(vec![label_definition, if_goto_label], expected_asm);
@@ -1075,17 +1043,11 @@ mod tests {
             // no local vars init since there are no local vars
             //
             // push arg0 to stack
-            vec![
-                "@0", "D=A", "@ARG", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            ],
+            vec!["@0", "D=A", "@ARG", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             // push arg1 to stack
-            vec![
-                "@1", "D=A", "@ARG", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            ],
+            vec!["@1", "D=A", "@ARG", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             // add
-            vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1",
-            ],
+            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
             // --- end function definition --- //
         ];
 
@@ -1117,33 +1079,9 @@ mod tests {
 
         let asm_commands = AsmGenerator::generate(vm_commands);
 
-        assert!(
-            asm_commands
-                .iter()
-                .filter(|cmd| *cmd == "(Test$ret.0)")
-                .count()
-                == 1
-        );
-        assert!(
-            asm_commands
-                .iter()
-                .filter(|cmd| *cmd == "@Test$ret.0")
-                .count()
-                == 1
-        );
-        assert!(
-            asm_commands
-                .iter()
-                .filter(|cmd| *cmd == "(Test$ret.1)")
-                .count()
-                == 1
-        );
-        assert!(
-            asm_commands
-                .iter()
-                .filter(|cmd| *cmd == "@Test$ret.1")
-                .count()
-                == 1
-        );
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "(Test$ret.0)").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "@Test$ret.0").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "(Test$ret.1)").count() == 1);
+        assert!(asm_commands.iter().filter(|cmd| *cmd == "@Test$ret.1").count() == 1);
     }
 }
