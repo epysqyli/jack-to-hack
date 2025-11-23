@@ -52,6 +52,10 @@ fn remove_comments(input: &str) -> String {
     input
         .lines()
         .map(|l| {
+            if l.trim().starts_with("*") {
+                return "".to_string();
+            }
+
             if !l.contains("/*") && !l.contains("//") {
                 return l.to_string();
             }
@@ -280,8 +284,12 @@ mod tests {
         ];
 
         let source = r#"
-            /** Prints "Hello World", File name: Main.jack */
+            /**
+             * Prints "Hello World".
+             * File name: Main.jack
+             */
             class Main {
+                /** This is the mandatory main function */
                 function void main() {
                     do Output.printString("Hello World !");
                     do Output.println(); // New line
