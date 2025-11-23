@@ -10,11 +10,13 @@ use crate::command::{
 pub(super) struct AsmGenerator {
     instructions: Vec<String>,
     function_calls: HashMap<String, usize>,
+    counter: u16,
 }
 
 impl AsmGenerator {
     pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
-        let mut asm_generator = Self { instructions: vec![], function_calls: HashMap::new() };
+        let mut asm_generator =
+            Self { instructions: vec![], function_calls: HashMap::new(), counter: 0 };
 
         // Set SP to 256 as first bootstrapping step
         #[cfg(not(test))]
@@ -294,7 +296,7 @@ impl AsmGenerator {
                 self.add("D=M");
                 self.address_top_stack();
                 self.add("D=M-D");
-                self.add(format!("@{}.PUSH_TRUE", fn_name).as_str());
+                self.add(format!("@{}.PUSH_TRUE.{}", fn_name, self.counter).as_str());
 
                 match args {
                     OperationArgs::Eq(_) => self.add("D;JEQ"),
@@ -306,16 +308,17 @@ impl AsmGenerator {
                 self.add("@SP");
                 self.add("A=M");
                 self.add("M=0");
-                self.add(format!("@{}.NO_OP", fn_name).as_str());
+                self.add(format!("@{}.NO_OP.{}", fn_name, self.counter).as_str());
                 self.add("0;JMP");
 
-                self.add(format!("({}.PUSH_TRUE)", fn_name).as_str());
+                self.add(format!("({}.PUSH_TRUE.{})", fn_name, self.counter).as_str());
                 self.add("@SP");
                 self.add("A=M");
                 self.add("M=-1");
 
-                self.add(format!("({}.NO_OP)", fn_name).as_str());
+                self.add(format!("({}.NO_OP.{})", fn_name, self.counter).as_str());
                 self.incr_stack_pointer();
+                self.counter += 1;
             }
         }
     }
@@ -513,18 +516,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE.0",
                 "D;JEQ",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP",
+                "@TestFunction.NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP)",
+                "(TestFunction.NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
@@ -561,18 +564,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE.0",
                 "D;JLT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP",
+                "@TestFunction.NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP)",
+                "(TestFunction.NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
@@ -609,18 +612,18 @@ mod tests {
                 "M=M-1",
                 "A=M",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE",
+                "@TestFunction.PUSH_TRUE.0",
                 "D;JGT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP",
+                "@TestFunction.NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE)",
+                "(TestFunction.PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP)",
+                "(TestFunction.NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
