@@ -20,7 +20,7 @@ pub fn compile(vm_instructions: Vec<Vec<String>>) -> Vec<String> {
     let instructions: Vec<String> = vm_instructions.into_iter().flat_map(|vm| vm).collect();
     let commands = parser::parse(bootstrap_instructions.into_iter().chain(instructions).collect());
 
-    asm_generator::AsmGenerator::generate(commands)
+    asm_generator::compile(commands)
 }
 
 fn read_vm_program_from_path(vm_program_path: &PathBuf) -> Vec<String> {

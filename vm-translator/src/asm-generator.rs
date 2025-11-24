@@ -7,14 +7,18 @@ use crate::command::{
     operation::{MemorySegment, OperationArgs},
 };
 
-pub(super) struct AsmGenerator {
+pub fn compile(vm_commands: Vec<Command>) -> Vec<String> {
+    AsmGenerator::generate(vm_commands)
+}
+
+struct AsmGenerator {
     instructions: Vec<String>,
     function_calls: HashMap<String, usize>,
     counter: u16,
 }
 
 impl AsmGenerator {
-    pub fn generate(vm_commands: Vec<Command>) -> Vec<String> {
+    fn generate(vm_commands: Vec<Command>) -> Vec<String> {
         let mut asm_generator =
             Self { instructions: vec![], function_calls: HashMap::new(), counter: 0 };
 
