@@ -49,66 +49,43 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 }
 
 fn remove_comments(input: &str) -> String {
-    input
-        .lines()
-        .map(|l| {
-            if l.trim().starts_with("*") {
-                return "".to_string();
-            }
+    let mut output: String = String::new();
+    let mut index: usize = 0;
+    let chars: Vec<char> = input.chars().collect();
+    let len = chars.len();
 
-            if !l.contains("/*") && !l.contains("//") {
-                return l.to_string();
-            }
-
-            let mut clean_line: String = String::new();
-            let mut index: usize = 0;
-            let chars: Vec<char> = l.chars().collect();
-            let len = chars.len();
-            let mut within_comment: bool = false;
-
-            while index < len - 1 {
-                if [&chars[index], &chars[index + 1]] == [&'/', &'/'] {
-                    break;
-                }
-
-                if [&chars[index], &chars[index + 1]] == [&'/', &'*'] {
-                    within_comment = true;
-                    index += 2;
-                    continue;
-                }
-
-                if index < len - 2
-                    && [&chars[index], &chars[index + 1], &chars[index + 2]] == [&'/', &'*', &'*']
-                {
-                    within_comment = true;
-                    index += 3;
-                    continue;
-                }
-
-                if [&chars[index], &chars[index + 1]] == [&'*', &'/'] {
-                    within_comment = false;
-                    index += 2;
-                    continue;
-                }
-
-                if within_comment {
-                    index += 1;
-                    continue;
-                }
-
-                clean_line.push(chars[index]);
+    while index < len - 1 {
+        if [&chars[index], &chars[index + 1]] == [&'/', &'/'] {
+            while &chars[index] != &'\n' {
                 index += 1;
-
-                if index + 1 == len {
-                    clean_line.push(chars[index]);
-                    break;
-                }
             }
+        }
 
-            clean_line
-        })
-        .map(|l| l.trim().trim_matches('\t').trim_matches('\n').to_string())
-        .collect()
+        if [&chars[index], &chars[index + 1]] == [&'/', &'*'] {
+            while [&chars[index], &chars[index + 1]] != [&'*', &'/'] {
+                index += 1;
+            }
+            index += 2;
+        }
+
+        if index < len - 2
+            && [&chars[index], &chars[index + 1], &chars[index + 2]] == [&'/', &'*', &'*']
+        {
+            while [&chars[index], &chars[index + 1]] != [&'*', &'/'] {
+                index += 1;
+            }
+        }
+
+        output.push(chars[index]);
+        index += 1;
+
+        if index + 1 == len {
+            output.push(chars[index]);
+            break;
+        }
+    }
+
+    output.lines().map(|l| l.trim().trim_matches('\t').trim_matches('\n').to_string()).collect()
 }
 
 fn identify_candidate_tokens(input_without_comments: String) -> Vec<String> {
@@ -288,6 +265,9 @@ mod tests {
              * Prints "Hello World".
              * File name: Main.jack
              */
+            /*
+            Yet another comment
+            */
             class Main {
                 /** This is the mandatory main function */
                 function void main() {
