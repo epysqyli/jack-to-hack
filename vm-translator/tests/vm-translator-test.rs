@@ -8,7 +8,7 @@ fn fibonacci_is_translated_correctly() {
 
     let vm_program =
         vm_translator::fetch_vm_program(&std::path::PathBuf::from("tests/fixtures/vm-program"));
-    let actual = vm_translator::compile_vm_to_asm(vm_program);
+    let actual = vm_translator::compile(vm_program);
 
     assert_eq!(expected, actual)
 }

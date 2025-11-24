@@ -13,7 +13,7 @@ fn main() {
         });
     }
 
-    let asm_program = vm_translator::compile_vm_to_asm(vm_instructions.into_values().collect());
+    let asm_program = vm_translator::compile(vm_instructions.into_values().collect());
     let current_dir = env::current_dir().unwrap();
     let output_path = format!("{}/source", current_dir.to_str().unwrap());
 

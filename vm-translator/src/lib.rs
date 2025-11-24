@@ -5,7 +5,7 @@ mod asm_generator;
 mod command;
 mod parser;
 
-pub fn compile_vm_to_asm(vm_instructions: Vec<Vec<String>>) -> Vec<String> {
+pub fn compile(vm_instructions: Vec<Vec<String>>) -> Vec<String> {
     // TODO: improve bootstrap when necessary.
     // Should @LCL, @ARG, @THIS, @THAT be initialized?
     let bootstrap_instructions = vec![
