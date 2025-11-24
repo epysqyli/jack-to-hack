@@ -1,4 +1,3 @@
-use hack_assembler::assembler::Assembler;
 use std::{env, fs, path::PathBuf};
 
 /* jack -> vm -> asm -> hack */
@@ -23,7 +22,7 @@ fn main() {
             .expect("Writing .asm output failed");
     }
 
-    match Assembler::new(asm_program).compile() {
+    match hack_assembler::assembler::compile(asm_program) {
         Ok(hack) => match fs::write(format!("{}.hack", output_path), hack.join("\n")) {
             Ok(_) => println!("Compilation to hack successful"),
             Err(err) => eprintln!("{err}"),

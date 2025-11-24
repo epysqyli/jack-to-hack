@@ -2,13 +2,24 @@ use crate::instruction::asm::Instruction;
 use crate::instruction::hack::Hackable;
 use std::{collections::HashMap, fs};
 
-pub struct Assembler {
+pub fn compile(asm: Vec<String>) -> Result<Vec<String>, String> {
+    Assembler::new(asm).compile()
+}
+
+pub fn compile_from_file(program_name: &str) -> Result<Vec<String>, String> {
+    match Assembler::from_file(program_name) {
+        Err(e) => Err(e.to_string()),
+        Ok(assembler) => assembler.compile() 
+    }
+}
+
+struct Assembler {
     asm: Vec<String>,
     symbols: HashMap<String, String>,
 }
 
 impl Assembler {
-    pub fn new(asm: Vec<String>) -> Self {
+    fn new(asm: Vec<String>) -> Self {
         let predefined_symbols = HashMap::from([
             ("SP".to_string(), "0".to_string()),
             ("LCL".to_string(), "1".to_string()),
@@ -41,7 +52,7 @@ impl Assembler {
         }
     }
 
-    pub fn from_file(program_name: &str) -> Result<Self, std::io::Error> {
+    fn from_file(program_name: &str) -> Result<Self, std::io::Error> {
         let asm = fs::read_to_string(program_name)?;
 
         let instructions = asm
@@ -54,7 +65,7 @@ impl Assembler {
         Ok(Self::new(instructions))
     }
 
-    pub fn compile(self: &Self) -> Result<Vec<String>, String> {
+    fn compile(self: &Self) -> Result<Vec<String>, String> {
         let asm_without_variables = self.pre_process()?;
         let mut hack_out: Vec<String> = vec![];
 
