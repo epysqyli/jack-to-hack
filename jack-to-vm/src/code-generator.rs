@@ -1512,4 +1512,75 @@ mod tests {
 
         assert_eq!(expected, super::compile(class));
     }
+
+    #[test]
+    fn compile_unary_operation() {
+        /*
+         * class Main {
+         *     function void main() {
+         *         var int a;
+         *         let a = 5;
+         *         let a = ~a;
+         *         do Output.printInt(a);
+         *         return;
+         *     }
+         * }
+         */
+        let class = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                name: "main".into(),
+                return_type: ReturnType::Void,
+                parameters: vec![],
+                routine_type: RoutineType::Function,
+                body: SubroutineBody {
+                    vars: vec![VarDec { name: "a".into(), jack_type: JackType::Int }],
+                    statements: vec![
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression { term: Term::IntConst(5), additional: vec![] },
+                        },
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::Unary {
+                                    op: Operation::Not,
+                                    term: Box::new(Term::VarName("a".into())),
+                                },
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printInt".into(),
+                            expressions: vec![Expression {
+                                term: Term::VarName("a".into()),
+                                additional: vec![],
+                            }],
+                        }),
+                        Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        let expected = vec![
+            "function Main.main 1",
+            "push constant 5",
+            "pop local 0",
+            "push local 0",
+            "not",
+            "pop local 0",
+            "push local 0",
+            "call Output.printInt 1",
+            "pop temp 0",
+            "push constant 0",
+            "return",
+        ];
+
+        assert_eq!(expected, super::compile(class))
+    }
 }

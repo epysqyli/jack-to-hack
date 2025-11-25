@@ -542,4 +542,62 @@ mod tests {
 
         assert_eq!(3, super::run(input.into()).routines.len());
     }
+
+    #[test]
+    fn parse_unary_operation() {
+        let input_program = r#"
+            class Main {
+                function void main() {
+                    var int a;
+                    let a = 5;
+                    let a = ~a;
+                    do Output.printInt(a);
+                    return;
+                }
+            }
+        "#;
+
+        let expected = Class {
+            name: "Main".into(),
+            vars: vec![],
+            routines: vec![SubroutineDec {
+                name: "main".into(),
+                return_type: ReturnType::Void,
+                parameters: vec![],
+                routine_type: RoutineType::Function,
+                body: SubroutineBody {
+                    vars: vec![VarDec { name: "a".into(), jack_type: JackType::Int }],
+                    statements: vec![
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression { term: Term::IntConst(5), additional: vec![] },
+                        },
+                        Statement::Let {
+                            var_name: "a".into(),
+                            array_access: None,
+                            exp: Expression {
+                                term: Term::Unary {
+                                    op: Operation::Not,
+                                    term: Box::new(Term::VarName("a".into())),
+                                },
+                                additional: vec![],
+                            },
+                        },
+                        Statement::Do(SubroutineCall {
+                            callee: Some("Output".into()),
+                            routine_name: "printInt".into(),
+                            expressions: vec![Expression {
+                                term: Term::VarName("a".into()),
+                                additional: vec![],
+                            }],
+                        }),
+                        Statement::Return(None),
+                    ],
+                },
+            }],
+        };
+
+        assert_eq!(expected, super::run(input_program.into()));
+    }
 }
