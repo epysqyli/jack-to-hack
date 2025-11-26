@@ -199,13 +199,12 @@ impl<'a> CodeGenerator<'a> {
             }
             Term::KeywordConst(val) => match val.as_str() {
                 "true" => {
-                    /* TODO: should all negative values be handled this way? */
                     self.vm.push("push constant 1".into());
                     self.vm.push("neg".into());
                 }
                 "false" => self.vm.push("push constant 0".into()),
                 "this" => self.vm.push("push pointer 0".into()),
-                "null" => self.vm.push("push constant 0".into()), /* TODO: is this correct? */
+                "null" => self.vm.push("push constant 0".into()),
                 _ => panic!("[WIP] Term::KeywordConst not handled"),
             },
         }
