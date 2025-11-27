@@ -1,0 +1,80 @@
+class Math {
+	function bool isBitSet(int a, int b) {
+		var bool res;
+		var int bitwiseAndResult;
+
+		let res = false;
+		let bitwiseAndResult = a & b;
+
+		if (bitwiseAndResult = b) {
+			let res = true;
+		}
+
+		return res;
+	}
+
+	function int multiply(int x, int y) {
+		var int result, xShifted;
+		var Array steps;
+
+		let i = 0;
+		let result = 0;
+		let xShifted = x;
+
+		let steps = Array.new(15);
+		let steps[0] = 1;
+		let steps[1] = 2;
+		let steps[2] = 4;
+		let steps[3] = 8;
+		let steps[4] = 16;
+		let steps[5] = 32;
+		let steps[6] = 64;
+		let steps[7] = 128;
+		let steps[8] = 256;
+		let steps[9] = 512;
+		let steps[10] = 1024;
+		let steps[11] = 2048;
+		let steps[12] = 4096;
+		let steps[13] = 8192;
+		let steps[14] = 16384;
+
+		while (i < 15) {
+			if (Math.isBitSet(y, steps[i])) {
+				let result = result + xShifted;
+			}
+
+			let xShifted = xShifted + xShifted;
+			let i = i + 1;
+		}
+
+		return result;
+	}
+	
+	function int divide(int x, int y) {
+		// implement
+		return 0;
+	}
+
+	function int abs(int x) {
+		if (x > 0) {
+			return x;
+		} else {
+			return -x;
+		}
+	}
+
+	function int min(int x, int y) {
+		// implement
+		return 0;
+	}
+
+	function int max(int x, int y) {
+		// implement
+		return 0;
+	}
+
+	function int sqrt(int x) {
+		// implement
+		return 0;
+	}
+}

@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf};
+use std::{collections::HashMap, env, fs, path::PathBuf};
 
 /* jack -> vm -> asm -> hack */
 fn main() {
@@ -6,14 +6,25 @@ fn main() {
     let program_pathbuf = &PathBuf::from(program_path.to_string());
     let vm_instructions = jack_to_vm::compile(program_pathbuf);
 
+    // TODO: fix path
+    // let os_path =
+        // &PathBuf::from("/home/elvis/code/ossu/from-nand-to-tetris/jack-to-hack/compiler/jack-os/Math.jack");
+    // let jack_os_instructions = jack_to_vm::compile(os_path);
+    let jack_os_instructions = HashMap::new();
+
+    let program_and_os: HashMap<String, Vec<String>> = vm_instructions
+        .into_iter()
+        .chain(jack_os_instructions)
+        .collect();
+
     if env::args().any(|arg| arg == "--with-vm") {
-        vm_instructions.iter().for_each(|(name, vm)| {
+        program_and_os.iter().for_each(|(name, vm)| {
             fs::write(format!("{}.vm", name.replace(".jack", "")), vm.join("\n"))
                 .expect("Writing .vm output failed");
         });
     }
 
-    let asm_program = vm_translator::compile(vm_instructions.into_values().collect());
+    let asm_program = vm_translator::compile(program_and_os.into_values().collect());
     let current_dir = env::current_dir().unwrap();
     let output_path = format!("{}/source", current_dir.to_str().unwrap());
 
