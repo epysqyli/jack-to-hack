@@ -90,6 +90,7 @@ impl AsmGenerator {
                     self.add("@LCL");
                     self.add("A=D+M");
                     self.add("M=0");
+                    self.incr_stack_pointer();
                 }
             }
             FunctionArgs::Call(fn_name, n_caller_args) => {
@@ -226,21 +227,20 @@ impl AsmGenerator {
                     | MemorySegment::Argument
                     | MemorySegment::This
                     | MemorySegment::That => {
-                        self.address_top_stack();
-                        self.add("D=M");
+                        /* Load memory segment index onto D */
+                        self.add(format!("@{}", val).as_str());
+                        self.add("D=A");
+
+                        /* Load (memory segment base address + index) onto R13 */
+                        self.add(mem_segment.as_asm_mnemonic().as_str());
+                        self.add("D=D+M");
                         self.add("@R13");
                         self.add("M=D");
 
-                        self.add(format!("@{}", val).as_str());
-                        self.add("D=A");
-                        self.add(mem_segment.as_asm_mnemonic().as_str());
-                        self.add("A=D+M");
-                        self.add("D=A");
-                        self.add("@R14");
-                        self.add("M=D");
-                        self.add("@R13");
+                        /* Pop top stack value onto memory segment index */
+                        self.address_top_stack();
                         self.add("D=M");
-                        self.add("@R14");
+                        self.add("@R13");
                         self.add("A=M");
                         self.add("M=D");
                     }
@@ -267,7 +267,7 @@ impl AsmGenerator {
                         }
                         self.add("M=D");
                     }
-                    MemorySegment::Constant => panic!("Cannot pop from Constant"),
+                    MemorySegment::Constant => panic!("Cannot pop stack to itself"),
                 }
             }
             OperationArgs::Add | OperationArgs::Sub | OperationArgs::And | OperationArgs::Or => {
@@ -696,22 +696,17 @@ mod tests {
                 vec![
                     vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
                     vec![
+                        "@5",
+                        "D=A",
+                        mem_segment_asm,
+                        "D=D+M",
+                        "@R13",
+                        "M=D",
                         "@SP",
                         "M=M-1",
                         "A=M",
                         "D=M",
                         "@R13",
-                        "M=D",
-                        "@5",
-                        "D=A",
-                        mem_segment_asm,
-                        "A=D+M",
-                        "D=A",
-                        "@R14",
-                        "M=D",
-                        "@R13",
-                        "D=M",
-                        "@R14",
                         "A=M",
                         "M=D",
                     ],
@@ -743,8 +738,8 @@ mod tests {
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@SP", "M=M-1", "A=M", "D=M", "@R13", "M=D", "@2", "D=A", "@LCL", "A=D+M", "D=A",
-                "@R14", "M=D", "@R13", "D=M", "@R14", "A=M", "M=D",
+                "@2", "D=A", "@LCL", "D=D+M", "@R13", "M=D", "@SP", "M=M-1", "A=M", "D=M", "@R13",
+                "A=M", "M=D",
             ],
             vec!["@2", "D=A", "@LCL", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
@@ -936,11 +931,15 @@ mod tests {
             "@LCL",
             "A=D+M",
             "M=0",
+            "@SP",
+            "M=M+1",
             "@1",
             "D=A",
             "@LCL",
             "A=D+M",
             "M=0",
+            "@SP",
+            "M=M+1",
         ]];
 
         assert_commands_eq(vec![cmd], expected_asm);
