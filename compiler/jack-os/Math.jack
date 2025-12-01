@@ -14,45 +14,69 @@ class Math {
 	}
 
 	function int multiply(int x, int y) {
-		var int result, xShifted;
-		var Array steps;
+		var int result, i, bit, xShifted;
 
 		let i = 0;
+		let bit = 1;
 		let result = 0;
 		let xShifted = x;
 
-		let steps = Array.new(15);
-		let steps[0] = 1;
-		let steps[1] = 2;
-		let steps[2] = 4;
-		let steps[3] = 8;
-		let steps[4] = 16;
-		let steps[5] = 32;
-		let steps[6] = 64;
-		let steps[7] = 128;
-		let steps[8] = 256;
-		let steps[9] = 512;
-		let steps[10] = 1024;
-		let steps[11] = 2048;
-		let steps[12] = 4096;
-		let steps[13] = 8192;
-		let steps[14] = 16384;
-
-		while (i < 15) {
-			if (Math.isBitSet(y, steps[i])) {
+		while (i < 16) {
+			if (Math.isBitSet(y, bit)) {
 				let result = result + xShifted;
 			}
 
 			let xShifted = xShifted + xShifted;
+			let bit = bit + bit;
 			let i = i + 1;
 		}
 
 		return result;
 	}
-	
+
 	function int divide(int x, int y) {
-		// implement
-		return 0;
+		var int q;
+
+		if (y > x) {
+			return 0;
+		}
+
+		if (y < 0) {
+			return 0;
+		}
+
+		let q = Math.divide(x, y * 2);
+
+		if ((x - (2 * q * y)) < y) {
+			return q * 2;
+		} else {
+			return (q * 2) + 1;
+		}
+	}
+
+	function int sqrt(int x) {
+		var int y, ys;
+
+		if (x < 1) {
+			return 0;
+		}
+
+		let y = 128; /* 128 ** 2 == 16384 */
+		while ((y * y) > x) {
+			let y = y / 2;
+		}
+
+		let ys = 0;
+		while (ys < x) {
+			let y = y + 1;
+			let ys = y * y;
+		}
+
+		if (ys > x) {
+			let y = y - 1;
+		}
+
+		return y;
 	}
 
 	function int abs(int x) {
@@ -64,17 +88,18 @@ class Math {
 	}
 
 	function int min(int x, int y) {
-		// implement
-		return 0;
+		if (x < y) {
+			return x;
+		} else {
+			return y;
+		}
 	}
 
 	function int max(int x, int y) {
-		// implement
-		return 0;
-	}
-
-	function int sqrt(int x) {
-		// implement
-		return 0;
+		if (x > y) {
+			return x;
+		} else {
+			return y;
+		}
 	}
 }

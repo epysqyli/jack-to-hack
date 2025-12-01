@@ -6,16 +6,13 @@ fn main() {
     let program_pathbuf = &PathBuf::from(program_path.to_string());
     let vm_instructions = jack_to_vm::compile(program_pathbuf);
 
-    // TODO: fix path
-    // let os_path =
-        // &PathBuf::from("/home/elvis/code/ossu/from-nand-to-tetris/jack-to-hack/compiler/jack-os/Math.jack");
-    // let jack_os_instructions = jack_to_vm::compile(os_path);
-    let jack_os_instructions = HashMap::new();
+    // TODO: fix path or avoid compilation from jack to vm to begin with
+    // and provide the vm versions as part of the bootstrapping process.
+    let os_path = &PathBuf::from("compiler/jack-os");
+    let jack_os_instructions = jack_to_vm::compile(os_path);
 
-    let program_and_os: HashMap<String, Vec<String>> = vm_instructions
-        .into_iter()
-        .chain(jack_os_instructions)
-        .collect();
+    let program_and_os: HashMap<String, Vec<String>> =
+        vm_instructions.into_iter().chain(jack_os_instructions).collect();
 
     if env::args().any(|arg| arg == "--with-vm") {
         program_and_os.iter().for_each(|(name, vm)| {
