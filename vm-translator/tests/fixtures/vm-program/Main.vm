@@ -1,4 +1,0 @@
-function Main.main 0
-	push constant 10
-	call Fib.fibonacci 1
-	return

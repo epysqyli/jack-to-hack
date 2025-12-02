@@ -1,3 +1,6 @@
 class Keyboard {
 	/* TODO: implement */
+	function void init() {
+		return;
+	}
 }

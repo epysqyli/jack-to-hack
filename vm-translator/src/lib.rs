@@ -6,16 +6,7 @@ mod command;
 mod parser;
 
 pub fn compile(vm_instructions: Vec<Vec<String>>) -> Vec<String> {
-    // TODO: improve bootstrap when necessary.
-    // Should @LCL, @ARG, @THIS, @THAT be initialized?
-    let bootstrap_instructions = vec![
-        "call Sys.init 0".to_string(),
-        "label INFINITE_LOOP".to_string(),
-        "goto INFINITE_LOOP".to_string(),
-        "function Sys.init 0".to_string(),
-        "call Main.main 0".to_string(),
-        "return".to_string(),
-    ];
+    let bootstrap_instructions = vec!["call Sys.init 0".to_string()];
 
     let instructions: Vec<String> = vm_instructions.into_iter().flat_map(|vm| vm).collect();
     let commands = parser::parse(bootstrap_instructions.into_iter().chain(instructions).collect());

@@ -1,3 +1,25 @@
 class Sys {
+	function void init() {
+		do Memory.init();
+		do Screen.init();
+		do Output.init();
+		do Keyboard.init();
+		do Main.main();
+		do Sys.halt();
+	}
+
+	function void halt() {
+		while (true) {}
+		return;
+	}
+
 	/* TODO: implement */
+	function void wait(int duration) {
+		return;
+	}
+
+	/* TODO: implement */
+	function void error(int errorCode) {
+		return;
+	}
 }
