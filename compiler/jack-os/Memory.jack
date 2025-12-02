@@ -1,25 +1,37 @@
 class Memory {
-	/* TODO: implement */
+	static int free;
+	static Array ram;
+
 	function void init() {
+		let free = 2048;
+		let ram = 0;
 		return;
 	}
 
-	/* TODO: implement */
 	function int peek(int address) {
-		return 0;
+		return ram[address];
 	}
 
-	/* TODO: implement */
 	function void poke(int address, int value) {
+		let ram[address] = value;
 		return;
 	}
 
-	/* TODO: implement */
 	function Array alloc(int size) {
-		return 0;
+		var int pointer;
+
+		/* The hack machine heap goes from 2048 to 16383.
+		 * RAM[16384] is the first Screen memory address.
+		 * Call Sys.error whenever this happens ? */
+		if ((free + size) > 16383) {
+			return 0;
+		}
+
+		let pointer = free;
+		let free = pointer + size;
+		return pointer;
 	}
 
-	/* TODO: implement */
 	function void deAlloc(Array o) {
 		return;
 	}
