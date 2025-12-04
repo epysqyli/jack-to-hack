@@ -1,10 +1,10 @@
 class Memory {
-	static int free;
 	static Array ram;
+	static int heapBase;
 
 	function void init() {
-		let free = 2048;
 		let ram = 0;
+		let heapBase = 2048;
 		return;
 	}
 
@@ -18,21 +18,50 @@ class Memory {
 	}
 
 	function Array alloc(int size) {
-		var int pointer;
+		var int address, segmentSize;
+		var boolean freeSegmentFound;
 
-		/* The hack machine heap goes from 2048 to 16383.
-		 * RAM[16384] is the first Screen memory address.
-		 * Call Sys.error whenever this happens ? */
-		if ((free + size) > 16383) {
-			return 0;
+		let address = heapBase;
+		let freeSegmentFound = false;
+
+		while (~freeSegmentFound) {
+			if (Memory.peek(address)) {
+				let address = address + Memory.peek(address + 1) + 2;
+			} else {
+				/* Freed segments store their data size in (baseAddress + 1) */
+				let segmentSize = Memory.peek(address + 1);
+				if (segmentSize) {
+					if (segmentSize < size) {
+						let freeSegmentFound = false;
+					} else {
+						let freeSegmentFound = true;
+					}
+				} else {
+					let freeSegmentFound = true;
+				}
+			}
 		}
 
-		let pointer = free;
-		let free = pointer + size;
-		return pointer;
+		/* Mark the segment as currently used by saving the address
+		 * value on the first register of the segment being allocated */
+		do Memory.poke(address, address);
+
+		/* Set the size of the segment */
+		do Memory.poke(address + 1, size);
+
+		return address + 2;
 	}
 
-	function void deAlloc(Array o) {
+	function void deAlloc(Array object) {
+		do Memory.poke(object[-2], 0);
+		return;
+	}
+
+	/* Memory.alloc can call this function every `n` object allocations,
+	 * checking whether previously used, but now freed, segments can be
+	 * reclaimed by merging them again into one continuous larger segment. */
+	function void defragment() {
+		//TODO: implement
 		return;
 	}
 }
