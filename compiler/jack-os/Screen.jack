@@ -1,6 +1,179 @@
 class Screen {
-	/* TODO: implement */
+	/* The screen memory map goes from 16384 to 24576 */
+	static Array screen;
+
+	/* true: black, false: white */
+	static boolean color;
+	static Array squaresUpToSixteen;
+
 	function void init() {
+		let screen = 16384;
+		let color = true;
+
+		let squaresUpToSixteen = Array.new(16);
+		let squaresUpToSixteen[0] = 1;
+		let squaresUpToSixteen[1] = 2;
+		let squaresUpToSixteen[2] = 4;
+		let squaresUpToSixteen[3] = 8;
+		let squaresUpToSixteen[4] = 16;
+		let squaresUpToSixteen[5] = 32;
+		let squaresUpToSixteen[6] = 64;
+		let squaresUpToSixteen[7] = 128;
+		let squaresUpToSixteen[8] = 256;
+		let squaresUpToSixteen[9] = 512;
+		let squaresUpToSixteen[10] = 1024;
+		let squaresUpToSixteen[11] = 2048;
+		let squaresUpToSixteen[12] = 4096;
+		let squaresUpToSixteen[13] = 8192;   // 0010000000000000
+		let squaresUpToSixteen[14] = 16384;  // 0100000000000000
+		let squaresUpToSixteen[15] = ~32767; // 1000000000000000
+
+		return;
+	}
+
+	function void clearScreen() {
+		var int currentAddress;
+		let currentAddress = 0;
+
+		while (currentAddress < 8192) {
+			let screen[currentAddress] = 0;
+			let currentAddress = currentAddress + 1;
+		}
+
+		return;
+	}
+
+	function void setColor(boolean b) {
+		let color = b;
+		return;
+	}
+
+	/**
+	 * The screen:
+	 *  has 256 rows (0, 255), 512 columns (0, 511): 131072 pixels
+	 *  is memory mapped as 8192 16-bit registers
+	 */
+	function void drawPixel(int x, int y) {
+		var int addr, value, bit;
+
+		if (x < 0) {
+			return;
+		}
+		if (y < 0) {
+			return;
+		}
+		if (x > 511) {
+			return;
+		}
+		if (y > 255) {
+			return;
+		}
+
+		/* a % x == a & (~x) if x is a power of 2
+		 * Also, ~0b1000 == 0b0111 == 0b1000 - 1, hence x & 15 */
+		let bit = x & 15;
+		let addr = screen + (y * 32) + (x / 16);
+
+		if (color) {
+			let value = Memory.peek(addr) | squaresUpToSixteen[bit];
+		} else {
+			/* Jack is weakly typed. true == 0b1111_1111_1111_1111 */
+			let value = Memory.peek(addr) & (true - squaresUpToSixteen[bit]);
+		}
+
+		do Memory.poke(addr, value);
+		return;
+	}
+
+	/**
+	 * The algorithm zigzags to the coordinates when neither x1 == x2
+	 * nor y1 == y2: in these cases, a straight line can be drawn.
+	 */
+	function void drawLine(int x1, int y1, int x2, int y2) {
+		var int x, y;
+		var int dx, dy, xProgress, yProgress, diff, xLimit, yLimit;
+
+		let x = x1;
+		let y = y1;
+
+		/* straight vertical line */
+		if (x1 = x2) {
+			while (y < y2) {
+				do Screen.drawPixel(x, y);
+				let y = y + 1;
+			}
+
+			return;
+		}
+
+		/* straight horizontal line */
+		if (y1 = y2) {
+			while (x < x2) {
+				do Screen.drawPixel(x, y);
+				let x = x + 1;
+			}
+
+			return;
+		}
+
+		let diff = 0;
+		let dx = x2 - x1;
+		let dy = y2 - y1;
+
+		let xProgress = 0;
+		let yProgress = 0;
+		let xLimit = dx + 1;
+		let yLimit = dy + 1;
+
+		if (dx > dy) {
+			while (xProgress < xLimit) {
+				do Screen.drawPixel(x + xProgress, y + yProgress);
+				if (diff < 0) {
+					let xProgress = xProgress + 1;
+					let diff = diff + dy;
+				} else {
+					let yProgress = yProgress + 1;
+					let diff = diff - dx;
+				}
+			}
+		} else {
+			while (yProgress < yLimit) {
+				do Screen.drawPixel(x + xProgress, y + yProgress);
+				if (diff < 0) {
+					let xProgress = xProgress + 1;
+					let diff = diff + dy;
+				} else {
+					let yProgress = yProgress + 1;
+					let diff = diff - dx;
+				}
+			}
+		}
+
+		return;
+	}
+
+	function void drawRectangle(int x1, int y1, int x2, int y2) {
+		do Screen.drawLine(x1, y1, x1, y2);
+		do Screen.drawLine(x1, y1, x2, y1);
+		do Screen.drawLine(x2, y1, x2, y2);
+		do Screen.drawLine(x1, y2, x2, y2);
+
+		return;
+	}
+
+	function void drawCircle(int x, int y, int r) {
+		var int dy, distance, limit, yCoord;
+
+		let dy = -r;
+		let limit = r + 1;
+
+		while (dy < limit) {
+			let yCoord = y + dy;
+			let distance = Math.sqrt((r * r) - (dy * dy));
+			do Screen.drawLine(x - distance, yCoord, x + distance, yCoord);
+			let dy = dy + 1;
+		}
+
 		return;
 	}
 }
