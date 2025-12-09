@@ -1,3 +1,110 @@
 class String {
-	/* TODO: implement */
+	field Array s;
+	field int maxLen;
+
+	constructor String new(int maxLength) {
+		let maxLen = maxLength;
+		let s = Array.new(maxLength);
+		return this;
+	}
+
+	method void dispose() {
+		do Memory.deAlloc(s);
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int length() {
+		var int i;
+		let i = maxLen;
+
+		while (charAt(i - 1) = 0) {
+			if (i > 0) {
+				let i = i - 1;
+			}
+		}
+
+		return i;
+	}
+
+	method char charAt(int j) {
+		return s[j];
+	}
+
+	method void setCharAt(int j, char c) {
+		let s[j] = c;
+		return;
+	}
+
+	method String appendChar(char c) {
+		let s[length()] = c;
+		return this;
+	}
+
+	method void eraseLastChar() {
+		do setCharAt(length() - 1, 0);
+		return;
+	}
+
+	/** Returns the integer value of the string: "123" -> 123 */
+	method int intValue() {
+		// TODO: implement
+		return;
+	}
+
+	/** Sets the string to the provided integer value */
+	method void setInt(int j) {
+		var int n, pos;
+		var Array digits;
+		var boolean isNegative;
+
+		let n = j;
+		if (j < 0) {
+			let n = -j;
+			let isNegative = true;
+		}
+
+		/* The highest numerical value is 32767 = 0b1111_1111_1111_1111 */
+		let pos = 0;
+		let digits = Array.new(5);
+
+		while (pos < 5) {
+			let digits[pos] = true;
+			let pos = pos + 1;
+		}
+
+		let pos = 4;
+		while (n > 0) {
+			let digits[pos] = Math.mod(n, 10);
+			let n = n / 10;
+			let pos = pos - 1;
+		}
+
+		if (isNegative) {
+			do appendChar(45);
+		}
+
+		let pos = 0;
+		while (pos < 5) {
+			if (~(digits[pos] = true)) {
+				/* 0..9 are mapped as 48..57 */
+				do appendChar(digits[pos] + 48);
+			}
+			let pos = pos + 1;
+		}
+
+		return;
+	}
+
+	function char doubleQuote() {
+		return 34;
+	}
+
+	function char backSpace() {
+		return 129;
+	}
+
+	function char newLine() {
+		return 128;
+	}
 }
