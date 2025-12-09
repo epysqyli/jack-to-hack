@@ -1,27 +1,32 @@
-use std::{collections::HashMap, env, fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
-/* jack -> vm -> asm -> hack */
 fn main() {
     let program_path = env::args().nth(1).expect("No program path provided!");
     let program_pathbuf = &PathBuf::from(program_path.to_string());
-    let vm_instructions = jack_to_vm::compile(program_pathbuf);
-
-    // TODO: fix path or avoid compilation from jack to vm to begin with
-    // and provide the vm versions as part of the bootstrapping process.
-    let os_path = &PathBuf::from("compiler/jack-os");
-    let jack_os_instructions = jack_to_vm::compile(os_path);
-
-    let program_and_os: HashMap<String, Vec<String>> =
-        vm_instructions.into_iter().chain(jack_os_instructions).collect();
+    let vm_program = jack_to_vm::compile(program_pathbuf);
 
     if env::args().any(|arg| arg == "--with-vm") {
-        program_and_os.iter().for_each(|(name, vm)| {
+        vm_program.iter().for_each(|(name, vm)| {
             fs::write(format!("{}.vm", name.replace(".jack", "")), vm.join("\n"))
                 .expect("Writing .vm output failed");
         });
     }
 
-    let asm_program = vm_translator::compile(program_and_os.into_values().collect());
+    let mut ordered_vm = vec![];
+    let vm_os = jack_to_vm::compile(&PathBuf::from("compiler/jack-os"));
+
+    ordered_vm.push(vm_os.get("compiler/jack-os/Sys.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Memory.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Array.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Output.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Math.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Screen.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/String.jack").unwrap().clone());
+    ordered_vm.push(vm_os.get("compiler/jack-os/Keyboard.jack").unwrap().clone());
+
+    vm_program.into_values().for_each(|class| ordered_vm.push(class));
+
+    let asm_program = vm_translator::compile(ordered_vm);
     let current_dir = env::current_dir().unwrap();
     let output_path = format!("{}/source", current_dir.to_str().unwrap());
 
