@@ -80,27 +80,22 @@ impl<'a> CodeGenerator<'a> {
                     self.vm.push("pop that 0".into());
                 }
             },
-            /* TODO: optimize branch handling setup ? */
             Statement::If { exp, statements, else_statements } => {
                 let counter = self.label_counter;
                 self.label_counter += 1;
 
                 self.compile_expression(exp);
                 self.vm.push(format!("if-goto IfTrue${}", counter));
-                self.vm.push(format!("goto IfFalse${}", counter));
+
+                /* handle the optional FALSE branch */
+                if let Some(else_statements) = else_statements {
+                    else_statements.iter().for_each(|s| self.compile_statement(s));
+                }
+                self.vm.push(format!("goto IfDone${}", counter));
 
                 /* handle TRUE branch */
                 self.vm.push(format!("label IfTrue${}", counter));
                 statements.iter().for_each(|s| self.compile_statement(s));
-                self.vm.push(format!("goto IfDone${}", counter));
-
-                /* handle the optional FALSE branch */
-                self.vm.push(format!("label IfFalse${}", counter));
-                if let Some(else_statements) = else_statements {
-                    else_statements.iter().for_each(|s| self.compile_statement(s));
-                }
-
-                self.vm.push(format!("goto IfDone${}", counter));
                 self.vm.push(format!("label IfDone${}", counter));
             }
             /* TODO: optimize branch handling setup ? */
@@ -560,7 +555,10 @@ mod tests {
                         Statement::If {
                             exp: Expression {
                                 term: Term::VarName("a".into()),
-                                additional: vec![(Operation::LessThan, Term::VarName("b".into()))],
+                                additional: vec![(
+                                    Operation::GreaterThan,
+                                    Term::VarName("b".into()),
+                                )],
                             },
                             statements: vec![Statement::Let {
                                 var_name: "res".into(),
@@ -592,18 +590,15 @@ mod tests {
             "function Example.greater 1",
             "push argument 0",
             "push argument 1",
-            "lt",
+            "gt",
             "if-goto IfTrue$0",
-            "goto IfFalse$0",
+            "push constant 0",
+            "pop local 0",
+            "goto IfDone$0",
             "label IfTrue$0",
             "push constant 1",
             "neg",
             "pop local 0",
-            "goto IfDone$0",
-            "label IfFalse$0",
-            "push constant 0",
-            "pop local 0",
-            "goto IfDone$0",
             "label IfDone$0",
             "push local 0",
             "return",
@@ -1478,29 +1473,23 @@ mod tests {
             "push constant 10",
             "lt",
             "if-goto IfTrue$0",
-            "goto IfFalse$0",
+            "goto IfDone$0",
             "label IfTrue$0",
             "push local 0",
             "push constant 5",
             "gt",
             "if-goto IfTrue$1",
-            "goto IfFalse$1",
-            "label IfTrue$1",
-            "push local 0",
-            "push constant 1",
-            "add",
-            "pop local 0",
-            "goto IfDone$1",
-            "label IfFalse$1",
             "push local 0",
             "push constant 2",
             "add",
             "pop local 0",
             "goto IfDone$1",
+            "label IfTrue$1",
+            "push local 0",
+            "push constant 1",
+            "add",
+            "pop local 0",
             "label IfDone$1",
-            "goto IfDone$0",
-            "label IfFalse$0",
-            "goto IfDone$0",
             "label IfDone$0",
             "push local 0",
             "call Output.printInt 1",
