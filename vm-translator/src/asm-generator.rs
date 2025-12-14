@@ -37,6 +37,9 @@ impl AsmGenerator {
             Command::Operation(args) => asm_generator.generate_operation_asm(args),
         });
 
+        #[cfg(not(test))]
+        asm_generator.inject_global_return();
+
         asm_generator.instructions
     }
 
@@ -60,6 +63,54 @@ impl AsmGenerator {
         self.add("A=M");
         self.add("M=D");
         self.incr_stack_pointer();
+    }
+
+    #[allow(dead_code)]
+    fn inject_global_return(self: &mut Self) {
+        self.add("(GLOBAL_RETURN)");
+
+        // frame = LCL: define frame as temp variable R5 and assign LCL to it
+        self.add("@LCL");
+        self.add("D=M");
+        self.add("@R5");
+        self.add("M=D");
+
+        // save the return address (M[LCL] - 5) to temp variable R6
+        self.add("@5");
+        self.add("A=D-A");
+        self.add("D=M");
+        self.add("@R6");
+        self.add("M=D");
+
+        // reposition return value for the caller: pop from the stack to ARG
+        self.address_top_stack();
+        self.add("D=M");
+        self.add("@ARG");
+        self.add("A=M");
+        self.add("M=D");
+
+        // reposition SP for the caller to @ARG + 1
+        self.add("@ARG");
+        self.add("D=M+1");
+        self.add("@SP");
+        self.add("M=D");
+
+        for (i, mem_segment) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+            self.add("@R5");
+            self.add("D=M");
+            for _ in 1..=i {
+                self.add("D=D-1");
+            }
+            self.add("A=D-1");
+            self.add("D=M");
+            self.add(mem_segment);
+            self.add("M=D");
+        }
+
+        // goto return address
+        self.add("@R6");
+        self.add("A=M");
+        self.add("0;JMP");
     }
 
     fn generate_branching_asm(self: &mut Self, args: &BranchingArgs) {
@@ -133,47 +184,7 @@ impl AsmGenerator {
                 self.add(format!("({}$ret.{})", fn_name, call_depth).as_str());
             }
             FunctionArgs::Return => {
-                // frame = LCL: define frame as temp variable R5 and assign LCL to it
-                self.add("@LCL");
-                self.add("D=M");
-                self.add("@R5");
-                self.add("M=D");
-
-                // save the return address (M[LCL] - 5) to temp variable R6
-                self.add("@5");
-                self.add("A=D-A");
-                self.add("D=M");
-                self.add("@R6");
-                self.add("M=D");
-
-                // reposition return value for the caller: pop from the stack to ARG
-                self.address_top_stack();
-                self.add("D=M");
-                self.add("@ARG");
-                self.add("A=M");
-                self.add("M=D");
-
-                // reposition SP for the caller to @ARG + 1
-                self.add("@ARG");
-                self.add("D=M+1");
-                self.add("@SP");
-                self.add("M=D");
-
-                for (i, mem_segment) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
-                    self.add("@R5");
-                    self.add("D=M");
-                    for _ in 1..=i {
-                        self.add("D=D-1");
-                    }
-                    self.add("A=D-1");
-                    self.add("D=M");
-                    self.add(mem_segment);
-                    self.add("M=D");
-                }
-
-                // goto return address
-                self.add("@R6");
-                self.add("A=M");
+                self.add("@GLOBAL_RETURN");
                 self.add("0;JMP");
             }
         }
@@ -1064,13 +1075,75 @@ mod tests {
     fn return_from_function() {
         assert_commands_eq(
             vec![Command::Function(FunctionArgs::Return)],
-            vec![vec![
-                "@LCL", "D=M", "@R5", "M=D", "@5", "A=D-A", "D=M", "@R6", "M=D", "@SP", "M=M-1",
-                "A=M", "D=M", "@ARG", "A=M", "M=D", "@ARG", "D=M+1", "@SP", "M=D", "@R5", "D=M",
-                "A=D-1", "D=M", "@THAT", "M=D", "@R5", "D=M", "D=D-1", "A=D-1", "D=M", "@THIS",
-                "M=D", "@R5", "D=M", "D=D-1", "D=D-1", "A=D-1", "D=M", "@ARG", "M=D", "@R5", "D=M",
-                "D=D-1", "D=D-1", "D=D-1", "A=D-1", "D=M", "@LCL", "M=D", "@R6", "A=M", "0;JMP",
-            ]],
+            vec![vec!["@GLOBAL_RETURN", "0;JMP"]],
+        );
+    }
+
+    #[test]
+    fn global_return_is_created_correctly() {
+        let mut asm_generator =
+            AsmGenerator { counter: 0, function_calls: HashMap::new(), instructions: vec![] };
+
+        asm_generator.inject_global_return();
+
+        assert_eq!(
+            asm_generator.instructions,
+            vec![
+                "(GLOBAL_RETURN)",
+                "@LCL",
+                "D=M",
+                "@R5",
+                "M=D",
+                "@5",
+                "A=D-A",
+                "D=M",
+                "@R6",
+                "M=D",
+                "@SP",
+                "M=M-1",
+                "A=M",
+                "D=M",
+                "@ARG",
+                "A=M",
+                "M=D",
+                "@ARG",
+                "D=M+1",
+                "@SP",
+                "M=D",
+                "@R5",
+                "D=M",
+                "A=D-1",
+                "D=M",
+                "@THAT",
+                "M=D",
+                "@R5",
+                "D=M",
+                "D=D-1",
+                "A=D-1",
+                "D=M",
+                "@THIS",
+                "M=D",
+                "@R5",
+                "D=M",
+                "D=D-1",
+                "D=D-1",
+                "A=D-1",
+                "D=M",
+                "@ARG",
+                "M=D",
+                "@R5",
+                "D=M",
+                "D=D-1",
+                "D=D-1",
+                "D=D-1",
+                "A=D-1",
+                "D=M",
+                "@LCL",
+                "M=D",
+                "@R6",
+                "A=M",
+                "0;JMP",
+            ]
         );
     }
 
