@@ -118,4 +118,22 @@ class Math {
 
 		return (x - ((x/y) * y));
 	}
+
+	function int pow(int x, int y) {
+		var int res, i;
+
+		if (y = 0) {
+			return 1;
+		}
+
+		let i = 1;
+		let res = x;
+
+		while (i < y) {
+			let res = res * x;
+			let i = i + 1;
+		}
+
+		return res;
+	}
 }
