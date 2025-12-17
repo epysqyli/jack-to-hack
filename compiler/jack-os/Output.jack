@@ -25,6 +25,11 @@ class Output {
 	 * Each character bitmap includes 2 empty right columns and 1 empty bottom row.
 	 */
 	function void printChar(char c) {
+		/* Printable chars go all the way up to 127 */
+		if (c > 127) {
+			return;
+		}
+
 		do Output.writeChar(c);
 
 		if (cursor[0] = 63) {
