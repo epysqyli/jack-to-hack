@@ -49,8 +49,7 @@ impl AsmGenerator {
 
     fn address_top_stack(self: &mut Self) {
         self.add("@SP");
-        self.add("M=M-1");
-        self.add("A=M");
+        self.add("AM=M-1");
     }
 
     fn incr_stack_pointer(self: &mut Self) {
@@ -384,7 +383,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=D+M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -409,7 +408,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=M-D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -434,7 +433,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D&M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=D&M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -459,7 +458,7 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D|M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=D|M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -478,7 +477,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=-M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "M=-M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -497,7 +496,7 @@ mod tests {
 
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@1", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "M=!M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "M=!M", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -524,12 +523,10 @@ mod tests {
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M",
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M-D",
                 "@TestFunction.PUSH_TRUE.0",
                 "D;JEQ",
@@ -572,12 +569,10 @@ mod tests {
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M",
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M-D",
                 "@TestFunction.PUSH_TRUE.0",
                 "D;JLT",
@@ -620,12 +615,10 @@ mod tests {
             vec!["@2", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M",
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M-D",
                 "@TestFunction.PUSH_TRUE.0",
                 "D;JGT",
@@ -672,9 +665,9 @@ mod tests {
         let expected_asm: Vec<Vec<&str>> = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=D+M", "@SP", "M=M+1"],
             vec!["@10", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=M-D", "@SP", "M=M+1"],
         ];
 
         assert_commands_eq(vm_commands, expected_asm);
@@ -714,8 +707,7 @@ mod tests {
                         "@R13",
                         "M=D",
                         "@SP",
-                        "M=M-1",
-                        "A=M",
+                        "AM=M-1",
                         "D=M",
                         "@R13",
                         "A=M",
@@ -749,7 +741,7 @@ mod tests {
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@2", "D=A", "@LCL", "D=D+M", "@R13", "M=D", "@SP", "M=M-1", "A=M", "D=M", "@R13",
+                "@2", "D=A", "@LCL", "D=D+M", "@R13", "M=D", "@SP", "AM=M-1", "D=M", "@R13",
                 "A=M", "M=D",
             ],
             vec!["@2", "D=A", "@LCL", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
@@ -782,7 +774,7 @@ mod tests {
             // push the constant 3 onto the stack
             vec!["@3", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             // pop 3 from stack and save it on temp index 4, i.e. memory address 9
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@R9", "M=D"],
+            vec!["@SP", "AM=M-1", "D=M", "@R9", "M=D"],
             // // push to stack from temp index 4
             vec!["@R9", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
@@ -812,7 +804,7 @@ mod tests {
 
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@Filename.1", "M=D"],
+            vec!["@SP", "AM=M-1", "D=M", "@Filename.1", "M=D"],
             vec!["@Filename.1", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
 
@@ -857,8 +849,8 @@ mod tests {
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@6", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@THIS", "M=D"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@THAT", "M=D"],
+            vec!["@SP", "AM=M-1", "D=M", "@THIS", "M=D"],
+            vec!["@SP", "AM=M-1", "D=M", "@THAT", "M=D"],
             vec!["@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec!["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
@@ -917,7 +909,7 @@ mod tests {
 
         let expected_asm = vec![
             vec!["(TestFunction$TestLabel)"],
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@TestFunction$TestLabel", "D;JNE"],
+            vec!["@SP", "AM=M-1", "D=M", "@TestFunction$TestLabel", "D;JNE"],
         ];
 
         assert_commands_eq(vec![label_definition, if_goto_label], expected_asm);
@@ -1064,7 +1056,7 @@ mod tests {
             // push arg1 to stack
             vec!["@1", "D=A", "@ARG", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             // add
-            vec!["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=D+M", "@SP", "M=M+1"],
+            vec!["@SP", "AM=M-1", "D=M", "@SP", "AM=M-1", "M=D+M", "@SP", "M=M+1"],
             // --- end function definition --- //
         ];
 
@@ -1100,8 +1092,7 @@ mod tests {
                 "@R6",
                 "M=D",
                 "@SP",
-                "M=M-1",
-                "A=M",
+                "AM=M-1",
                 "D=M",
                 "@ARG",
                 "A=M",
