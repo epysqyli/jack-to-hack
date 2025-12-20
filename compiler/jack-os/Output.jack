@@ -42,7 +42,12 @@ class Output {
 	}
 
 	function void printInt(int i) {
-		do Output.printChar(i + 48);
+		var String s;
+
+		let s = String.new(6);
+		do s.setInt(i);
+		do Output.printString(s);
+
 		return;
 	}
 
