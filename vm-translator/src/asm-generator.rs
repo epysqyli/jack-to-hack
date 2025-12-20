@@ -39,6 +39,8 @@ impl AsmGenerator {
 
         #[cfg(not(test))]
         asm_generator.inject_global_return();
+        #[cfg(not(test))]
+        asm_generator.inject_save_caller_frame();
 
         asm_generator.instructions
     }
@@ -112,6 +114,35 @@ impl AsmGenerator {
         self.add("0;JMP");
     }
 
+    #[allow(dead_code)]
+    fn inject_save_caller_frame(self: &mut Self) {
+        self.add("(SAVE_CALLER_FRAME)");
+
+        ["@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|mem_segment| {
+            self.add(mem_segment);
+            self.add("D=M");
+            self.push_d_reg_to_stack();
+        });
+
+        self.add("@SP");
+        self.add("D=M");
+        self.add("@R14");
+        self.add("A=M");
+        self.add("D=D-A");
+        self.add("@ARG");
+        self.add("M=D");
+
+        self.add("@SP");
+        self.add("D=M");
+        self.add("@LCL");
+        self.add("M=D");
+
+        // Jump back to the remaining call instructions
+        self.add("@R15");
+        self.add("A=M");
+        self.add("0;JMP");
+    }
+
     fn generate_branching_asm(self: &mut Self, args: &BranchingArgs) {
         match args {
             BranchingArgs::Label(label, fn_name) => {
@@ -155,31 +186,33 @@ impl AsmGenerator {
                     }
                 };
 
+                // Generate the return label instruction line number and push it to the stack
                 self.add(format!("@{}$ret.{}", fn_name, call_depth).as_str());
                 self.add("D=A");
                 self.push_d_reg_to_stack();
 
-                ["@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|mem_segment| {
-                    self.add(mem_segment);
-                    self.add("D=M");
-                    self.push_d_reg_to_stack();
-                });
+                // Generate the return label instruction line number for the inner call logic
+                self.add(format!("@{}$RetFromSaveCallerFrame${}", fn_name, call_depth).as_str());
+                self.add("D=A");
+                self.add("@R15");
+                self.add("M=D");
 
-                self.add("@SP");
-                self.add("D=M");
+                // Store (5 + n_caller_args) on @R14
                 self.add(format!("@{}", 5 + n_caller_args).as_str());
-                self.add("D=D-A");
-                self.add("@ARG");
+                self.add("D=A");
+                self.add("@R14");
                 self.add("M=D");
 
-                self.add("@SP");
-                self.add("D=M");
-                self.add("@LCL");
-                self.add("M=D");
+                self.add("@SAVE_CALLER_FRAME");
+                self.add("0;JMP");
+
+                // The actual label being jumped to at the end by @{}_CORE_CALL_LOGIC
+                self.add(format!("({}$RetFromSaveCallerFrame${})", fn_name, call_depth).as_str());
 
                 self.add(format!("@{}", fn_name).as_str());
                 self.add("0;JMP");
 
+                // Actually place the return label, jumped to by @GLOBAL_RETURN
                 self.add(format!("({}$ret.{})", fn_name, call_depth).as_str());
             }
             FunctionArgs::Return => {
@@ -741,8 +774,8 @@ mod tests {
         let expected_asm = vec![
             vec!["@5", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             vec![
-                "@2", "D=A", "@LCL", "D=D+M", "@R13", "M=D", "@SP", "AM=M-1", "D=M", "@R13",
-                "A=M", "M=D",
+                "@2", "D=A", "@LCL", "D=D+M", "@R13", "M=D", "@SP", "AM=M-1", "D=M", "@R13", "A=M",
+                "M=D",
             ],
             vec!["@2", "D=A", "@LCL", "A=D+M", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
         ];
