@@ -4,7 +4,9 @@ class Sys {
 		do Screen.init();
 		do Output.init();
 		do Keyboard.init();
+
 		do Main.main();
+
 		do Sys.halt();
 	}
 
@@ -18,8 +20,18 @@ class Sys {
 		return;
 	}
 
-	/* TODO: implement */
 	function void error(int errorCode) {
+		var String baseMessage, code;
+
+		let baseMessage = "ERR ";
+		let code = String.new(5);
+		do code.setInt(errorCode);
+
+		do Screen.clearScreen();
+		do Output.moveCursor(28, 11);
+		do Output.printString(baseMessage);
+		do Output.printString(code);
+
 		return;
 	}
 }
