@@ -336,34 +336,32 @@ impl AsmGenerator {
                 self.add("M=!M");
                 self.incr_stack_pointer();
             }
-            OperationArgs::Eq(fn_name)
-            | OperationArgs::Gt(fn_name)
-            | OperationArgs::Lt(fn_name) => {
+            OperationArgs::Eq | OperationArgs::Gt | OperationArgs::Lt => {
                 self.address_top_stack();
                 self.add("D=M");
                 self.address_top_stack();
                 self.add("D=M-D");
-                self.add(format!("@{}.PUSH_TRUE.{}", fn_name, self.counter).as_str());
+                self.add(format!("@PUSH_TRUE.{}", self.counter).as_str());
 
                 match args {
-                    OperationArgs::Eq(_) => self.add("D;JEQ"),
-                    OperationArgs::Lt(_) => self.add("D;JLT"),
-                    OperationArgs::Gt(_) => self.add("D;JGT"),
+                    OperationArgs::Eq => self.add("D;JEQ"),
+                    OperationArgs::Lt => self.add("D;JLT"),
+                    OperationArgs::Gt => self.add("D;JGT"),
                     _ => {}
                 }
 
                 self.add("@SP");
                 self.add("A=M");
                 self.add("M=0");
-                self.add(format!("@{}.NO_OP.{}", fn_name, self.counter).as_str());
+                self.add(format!("@NO_OP.{}", self.counter).as_str());
                 self.add("0;JMP");
 
-                self.add(format!("({}.PUSH_TRUE.{})", fn_name, self.counter).as_str());
+                self.add(format!("(PUSH_TRUE.{})", self.counter).as_str());
                 self.add("@SP");
                 self.add("A=M");
                 self.add("M=-1");
 
-                self.add(format!("({}.NO_OP.{})", fn_name, self.counter).as_str());
+                self.add(format!("(NO_OP.{})", self.counter).as_str());
                 self.incr_stack_pointer();
                 self.counter += 1;
             }
@@ -548,7 +546,7 @@ mod tests {
                 2,
                 self::FILENAME.to_string(),
             )),
-            Command::Operation(OperationArgs::Eq("TestFunction".to_string())),
+            Command::Operation(OperationArgs::Eq),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -561,18 +559,18 @@ mod tests {
                 "@SP",
                 "AM=M-1",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE.0",
+                "@PUSH_TRUE.0",
                 "D;JEQ",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP.0",
+                "@NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE.0)",
+                "(PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP.0)",
+                "(NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
@@ -594,7 +592,7 @@ mod tests {
                 2,
                 self::FILENAME.to_string(),
             )),
-            Command::Operation(OperationArgs::Lt("TestFunction".to_string())),
+            Command::Operation(OperationArgs::Lt),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -607,18 +605,18 @@ mod tests {
                 "@SP",
                 "AM=M-1",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE.0",
+                "@PUSH_TRUE.0",
                 "D;JLT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP.0",
+                "@NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE.0)",
+                "(PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP.0)",
+                "(NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
@@ -640,7 +638,7 @@ mod tests {
                 2,
                 self::FILENAME.to_string(),
             )),
-            Command::Operation(OperationArgs::Gt("TestFunction".to_string())),
+            Command::Operation(OperationArgs::Gt),
         ];
 
         let expected_asm: Vec<Vec<&str>> = vec![
@@ -653,18 +651,18 @@ mod tests {
                 "@SP",
                 "AM=M-1",
                 "D=M-D",
-                "@TestFunction.PUSH_TRUE.0",
+                "@PUSH_TRUE.0",
                 "D;JGT",
                 "@SP",
                 "A=M",
                 "M=0",
-                "@TestFunction.NO_OP.0",
+                "@NO_OP.0",
                 "0;JMP",
-                "(TestFunction.PUSH_TRUE.0)",
+                "(PUSH_TRUE.0)",
                 "@SP",
                 "A=M",
                 "M=-1",
-                "(TestFunction.NO_OP.0)",
+                "(NO_OP.0)",
                 "@SP",
                 "M=M+1",
             ],
