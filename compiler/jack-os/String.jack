@@ -68,6 +68,11 @@ class String {
 		var Array digits;
 		var boolean isNegative;
 
+		if (j = 0) {
+			do appendChar(48);
+			return;
+		}
+
 		let n = j;
 		if (j < 0) {
 			let n = -j;
