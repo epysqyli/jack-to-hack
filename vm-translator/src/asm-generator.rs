@@ -1020,7 +1020,6 @@ mod tests {
 
             // --- begin call function --- //
             vec![
-                // Push return address
                 "@Sum$ret.0",
                 "D=A",
                 "@SP",
@@ -1028,54 +1027,19 @@ mod tests {
                 "M=D",
                 "@SP",
                 "M=M+1",
-                // push LCL
-                "@LCL",
-                "D=M",
-                "@SP",
-                "A=M",
+                "@Sum$RetFromSaveCallerFrame$0",
+                "D=A",
+                "@R15",
                 "M=D",
-                "@SP",
-                "M=M+1",
-                // push ARG
-                "@ARG",
-                "D=M",
-                "@SP",
-                "A=M",
-                "M=D",
-                "@SP",
-                "M=M+1",
-                // push THIS
-                "@THIS",
-                "D=M",
-                "@SP",
-                "A=M",
-                "M=D",
-                "@SP",
-                "M=M+1",
-                // push THAT
-                "@THAT",
-                "D=M",
-                "@SP",
-                "A=M",
-                "M=D",
-                "@SP",
-                "M=M+1",
-                // reposition ARG to SP - 5 - number of args
-                "@SP",
-                "D=M",
                 "@7",
-                "D=D-A",
-                "@ARG",
+                "D=A",
+                "@R14",
                 "M=D",
-                // reposition LCL to SP
-                "@SP",
-                "D=M",
-                "@LCL",
-                "M=D",
-                // goto callee
+                "@SAVE_CALLER_FRAME",
+                "0;JMP",
+                "(Sum$RetFromSaveCallerFrame$0)",
                 "@Sum",
                 "0;JMP",
-                // inject return address label to the asm instructions
                 "(Sum$ret.0)",
             ],
             // --- end call function --- //
