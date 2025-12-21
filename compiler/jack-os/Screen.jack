@@ -56,19 +56,6 @@ class Screen {
 	function void drawPixel(int x, int y) {
 		var int addr, value, bit;
 
-		if (x < 0) {
-			return;
-		}
-		if (y < 0) {
-			return;
-		}
-		if (x > 511) {
-			return;
-		}
-		if (y > 255) {
-			return;
-		}
-
 		/* a % x == a & (~x) if x is a power of 2
 		 * Also, ~0b1000 == 0b0111 == 0b1000 - 1, hence x & 15 */
 		let bit = x & 15;
@@ -156,7 +143,7 @@ class Screen {
 		do Screen.drawLine(x1, y1, x1, y2);
 		do Screen.drawLine(x1, y1, x2, y1);
 		do Screen.drawLine(x2, y1, x2, y2);
-		do Screen.drawLine(x1, y2, x2, y2);
+		do Screen.drawLine(x1, y2, x2 + 1, y2);
 
 		return;
 	}
