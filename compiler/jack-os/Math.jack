@@ -1,18 +1,4 @@
 class Math {
-	function bool isBitSet(int a, int b) {
-		var bool res;
-		var int bitwiseAndResult;
-
-		let res = false;
-		let bitwiseAndResult = a & b;
-
-		if (bitwiseAndResult = b) {
-			let res = true;
-		}
-
-		return res;
-	}
-
 	function int multiply(int x, int y) {
 		var int result, i, bit, xShifted;
 
@@ -22,7 +8,7 @@ class Math {
 		let xShifted = x;
 
 		while (i < 16) {
-			if (Math.isBitSet(y, bit)) {
+			if ((y & bit) = bit) {
 				let result = result + xShifted;
 			}
 
