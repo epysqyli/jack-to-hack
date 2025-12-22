@@ -15,8 +15,19 @@ class Sys {
 		return;
 	}
 
-	/* TODO: implement */
 	function void wait(int duration) {
+		var int i, y;
+		let i = 0;
+		let y = 0;
+
+		while (i < duration) {
+			while (y < 54) {
+				let y + y + 1;
+			}
+			let i = i + 1;
+			let y = 0;
+		}
+
 		return;
 	}
 
