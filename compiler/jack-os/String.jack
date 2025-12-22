@@ -56,7 +56,9 @@ class String {
 
 		while (i < len) {
 			let i = i + 1;
-			let val = val + ((charAt(i - 1) - 48) * Math.pow(10, len - i));
+			if (charAt(i - 1) = 45) {} else {
+				let val = val + ((charAt(i - 1) - 48) * Math.pow(10, len - i));
+			}
 		}
 
 		return val;
