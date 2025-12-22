@@ -5,8 +5,11 @@ class Screen {
 	/* true: black, false: white */
 	static boolean color;
 	static Array squaresUpToSixteen;
+	static Array xs, ys;
 
 	function void init() {
+		var int i, xsAddr;
+
 		let screen = 16384;
 		let color = true;
 
@@ -27,6 +30,39 @@ class Screen {
 		let squaresUpToSixteen[13] = 8192;   // 0010000000000000
 		let squaresUpToSixteen[14] = 16384;  // 0100000000000000
 		let squaresUpToSixteen[15] = ~32767; // 1000000000000000
+
+		let ys = Array.new(256);
+		let i = 0;
+		while (i < 256) {
+			let ys[i] = screen + (i * 32);
+			let i = i + 1;
+		}
+
+		let xs = Array.new(512);
+		let i = 0;
+		let xsAddr = 0;
+
+		while (i < 32) {
+			let xs[xsAddr] = i;
+			let xs[xsAddr + 1] = i;
+			let xs[xsAddr + 2] = i;
+			let xs[xsAddr + 3] = i;
+			let xs[xsAddr + 4] = i;
+			let xs[xsAddr + 5] = i;
+			let xs[xsAddr + 6] = i;
+			let xs[xsAddr + 7] = i;
+			let xs[xsAddr + 8] = i;
+			let xs[xsAddr + 9] = i;
+			let xs[xsAddr + 10] = i;
+			let xs[xsAddr + 11] = i;
+			let xs[xsAddr + 12] = i;
+			let xs[xsAddr + 13] = i;
+			let xs[xsAddr + 14] = i;
+			let xs[xsAddr + 15] = i;
+
+			let xsAddr = xsAddr + 16;
+			let i = i + 1;
+		}
 
 		return;
 	}
@@ -59,7 +95,9 @@ class Screen {
 		/* a % x == a & (~x) if x is a power of 2
 		 * Also, ~0b1000 == 0b0111 == 0b1000 - 1, hence x & 15 */
 		let bit = x & 15;
-		let addr = screen + (y * 32) + (x / 16);
+
+		/* [screen + (y * 32) + (x / 16)] is too slow to compute on the fly */
+		let addr = ys[y] + xs[x];
 
 		if (color) {
 			let value = Memory.peek(addr) | squaresUpToSixteen[bit];
