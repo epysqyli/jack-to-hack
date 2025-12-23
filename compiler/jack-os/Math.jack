@@ -1,5 +1,18 @@
 class Math {
 	function int multiply(int x, int y) {
+		var int absX, absY, res;
+
+		let absX = Math.abs(x);
+		let absY = Math.abs(y);
+		let res = Math.innerMultiply(absX, absY);
+
+		if (x < 0) { let res = -res; }
+		if (y < 0) { let res = -res; }
+
+		return res;
+	}
+
+	function int innerMultiply(int x, int y) {
 		var int result, i, bit, xShifted;
 
 		let i = 0;
@@ -21,17 +34,25 @@ class Math {
 	}
 
 	function int divide(int x, int y) {
+		var int absX, absY, res;
+
+		let absX = Math.abs(x);
+		let absY = Math.abs(y);
+		let res = Math.innerDivide(absX, absY);
+
+		if (x < 0) { let res = -res; }
+		if (y < 0) { let res = -res; }
+
+		return res;
+	}
+
+	function int innerDivide(int x, int y) {
 		var int q;
 
-		if (y > x) {
-			return 0;
-		}
+		if (y > x) { return 0; }
+		if (y < 0) { return 0; }
 
-		if (y < 0) {
-			return 0;
-		}
-
-		let q = Math.divide(x, y * 2);
+		let q = Math.innerDivide(x, y * 2);
 
 		if ((x - (2 * q * y)) < y) {
 			return q * 2;
