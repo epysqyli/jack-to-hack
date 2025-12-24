@@ -178,10 +178,14 @@ class Screen {
 	}
 
 	function void drawRectangle(int x1, int y1, int x2, int y2) {
-		do Screen.drawLine(x1, y1, x1, y2);
+		var int nextY;
+		let nextY = y1 + 1;
+
 		do Screen.drawLine(x1, y1, x2, y1);
-		do Screen.drawLine(x2, y1, x2, y2);
-		do Screen.drawLine(x1, y2, x2 + 1, y2);
+		while (nextY < y2) {
+			do Screen.drawLine(x1, nextY, x2, nextY);
+			let nextY = nextY + 1;
+		}
 
 		return;
 	}
