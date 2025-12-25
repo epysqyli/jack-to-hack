@@ -1,0 +1,74 @@
+A register:
+	- load based on first destination bit for C instructions
+	- load if dealing with an A instruction
+D register: load based on second destination for C instruction
+M: load based on third destination bit for C instructions
+
+Mux A<->M 
+	- assert control bit based on the C instruction 'a' bit
+
+Mux AluOuput<->instruction
+	- assert control bit when dealing with A instruction
+	
+PC: what control bit should be asserted here?
+	- the default behavior is incr, i.e. the next address in ROM
+	- load is asserted whenever:
+		- JUMP instruction bit is set (j1 | j2 | j3)
+		- the JUMP condition is met:
+			- zr, ng ALU outputs are checked against the D register (D reg only?)
+			- or if there is an unconditional JUMP (j1j2j3 == 111)
+
+ALU:
+	6 control bits in are zx, nx, zy, ny, f, no
+	2 bits out: zr, ng
+		- these are used as JUMP conditionals
+
+-----------------------------------------------------------------------
+
+... previous instructions assign a value to D ...
+@SOME_LOCATION
+D;JEQ
+
+1      | C instruction
+11     | ignore
+0      | ALU operates on the A register as second input
+001100 | zx nx zy ny f no => access D register
+000    | no dest, output value is not saved anywhere
+010    | JUMP => JEQ, i.e. if D is equal to zero, we jump to @SOME_LOCATION
+
+-----------------------------------------------------------------------
+
+PC load bit
+	- PC in{16}, reset, load, inc | out{16}
+	- [reset, load, inc] bits
+	- the incr bit should always be asserted due to how the PC works
+	- define additional bit: ps = (!ng & !zr)
+
+	PC incr
+		000 | NOP | zr, zx discarded
+
+	PC load if j1 j2 j3 matches with ng zr ps, else PC incr 
+
+		001 | JGT | ps == 1
+		010 | JEQ | zr == 1 
+		011 | JGE | zr == 1 OR ps == 1
+		100 | JLT | ng == 1
+		101 | JNE | zr == 0
+		110 | JLE | zr == 1 OR ng == 1
+
+	PC load
+		111 | JMP | zr, zx discarded
+
+Evaluation logic:
+	(j1 & j2 & j3) | (j1 & ng) | (j2 & zr) | (j3 & ps) 
+
+	examples:
+		- JMP with zr=0, ng=1
+		- 1 & 1 & 1 | 1 & 1 | 1 & 0 | 1 & 0 => PC load asserted
+
+		- JGE with ng = 0, zr = 0, ps = 1
+		- 0 & 1 & 1 | 0 & 0 | 1 & 0 | 1 & 1 => PC load asserted 
+
+		- NOP with zr = 1
+		- 0 & 0 & 0 | 0 & 0 | 0 & 1 | 0 & 0 => PC load not asserted
+

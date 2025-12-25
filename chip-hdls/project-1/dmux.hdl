@@ -1,0 +1,22 @@
+/**
+ * Demultiplexor:
+ * [a, b] = [in, 0] if sel = 0
+ *          [0, in] if sel = 1
+ */
+CHIP DMux {
+    IN in, sel;
+    OUT a, b;
+
+    PARTS:
+    Not(in=sel, out=notSel);
+
+    /** send `in` to `a` */
+    Xor(a=in, b=sel, out=inXorSel);
+    And(a=in, b=notSel, out=inAndNotSel);
+    And(a=inXorSel, b=inAndNotSel, out=a);
+
+    /** send `in` to `b` */
+    Xor(a=in, b=notSel, out=inXorNotSel);
+    And(a=in, b=sel, out=inAndSel);
+    And(a=inXorNotSel, b=inAndSel, out=b);
+}
