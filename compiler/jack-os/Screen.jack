@@ -142,8 +142,8 @@ class Screen {
 		}
 
 		let diff = 0;
-		let dx = x2 - x1;
-		let dy = y2 - y1;
+		let dx = Math.abs(x2 - x1);
+		let dy = Math.abs(y2 - y1);
 
 		let xProgress = 0;
 		let yProgress = 0;
