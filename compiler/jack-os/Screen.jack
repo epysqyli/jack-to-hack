@@ -117,15 +117,26 @@ class Screen {
 	function void drawLine(int x1, int y1, int x2, int y2) {
 		var int x, y;
 		var int dx, dy, xProgress, yProgress, diff, xLimit, yLimit;
+		var boolean yGoesUp, xGoesLeft;
 
 		let x = x1;
 		let y = y1;
 
+		if (x1 > x2) { let xGoesLeft = true; } else { let xGoesLeft = false; }
+		if (y1 > y2) { let yGoesUp = true; } else { let yGoesUp = false; }
+
 		/* straight vertical line */
 		if (x1 = x2) {
-			while (y < y2) {
-				do Screen.drawPixel(x, y);
-				let y = y + 1;
+			if (yGoesUp) {
+				while (y > y2) {
+					do Screen.drawPixel(x, y);
+					let y = y - 1;
+				}
+			} else {
+				while (y < y2) {
+					do Screen.drawPixel(x, y);
+					let y = y + 1;
+				}
 			}
 
 			return;
@@ -133,9 +144,16 @@ class Screen {
 
 		/* straight horizontal line */
 		if (y1 = y2) {
-			while (x < x2) {
-				do Screen.drawPixel(x, y);
-				let x = x + 1;
+			if (xGoesLeft) {
+				while (x > x2) {
+					do Screen.drawPixel(x, y);
+					let x = x - 1;
+				}
+			} else {
+				while (x < x2) {
+					do Screen.drawPixel(x, y);
+					let x = x + 1;
+				}
 			}
 
 			return;
@@ -152,7 +170,20 @@ class Screen {
 
 		if (dx > dy) {
 			while (xProgress < xLimit) {
-				do Screen.drawPixel(x + xProgress, y + yProgress);
+				if (yGoesUp) {
+					if (xGoesLeft) {
+						do Screen.drawPixel(x - xProgress, y - yProgress);
+					} else {
+						do Screen.drawPixel(x + xProgress, y - yProgress);
+					}
+				} else {
+					if (xGoesLeft) {
+						do Screen.drawPixel(x - xProgress, y + yProgress);
+					} else {
+						do Screen.drawPixel(x + xProgress, y + yProgress);
+					}
+				}
+
 				if (diff < 0) {
 					let xProgress = xProgress + 1;
 					let diff = diff + dy;
@@ -163,7 +194,20 @@ class Screen {
 			}
 		} else {
 			while (yProgress < yLimit) {
-				do Screen.drawPixel(x + xProgress, y + yProgress);
+				if (yGoesUp) {
+					if (xGoesLeft) {
+						do Screen.drawPixel(x - xProgress, y - yProgress);
+					} else {
+						do Screen.drawPixel(x + xProgress, y - yProgress);
+					}
+				} else {
+					if (xGoesLeft) {
+						do Screen.drawPixel(x - xProgress, y + yProgress);
+					} else {
+						do Screen.drawPixel(x + xProgress, y + yProgress);
+					}
+				}
+
 				if (diff < 0) {
 					let xProgress = xProgress + 1;
 					let diff = diff + dy;
