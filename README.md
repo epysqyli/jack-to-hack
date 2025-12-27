@@ -5,3 +5,4 @@ This repo is organized in several crates:
 - `hack-assembler`: an assembler from .asm to .hack machine language code
 - `vm-translator`: intermediate stack machine language translator, from .vm files to .asm
 - `jack-to-vm`: compilter from Jack to intermediate VM
+
