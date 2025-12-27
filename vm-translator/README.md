@@ -1,5 +1,5 @@
 # VM Translator
-Virtual stack machine translator for the [From Nand To Tetris](https://www.nand2tetris.org/course) course.
+Virtual stack machine translator. 
 
 # Example
 
@@ -36,8 +36,4 @@ A=M
 M=D+M
 @SP
 M=M+1
-(END)
-@END
-0;JMP
-
 ```

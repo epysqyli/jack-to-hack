@@ -7,8 +7,6 @@ This crate operates on `.jack` files and produces intermediate representation vm
 To provide a simple example, the following Jack class
 
 ```
-The following Jack class ...
-
 class Main {
      function void main() {
          return;

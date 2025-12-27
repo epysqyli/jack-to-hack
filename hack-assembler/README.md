@@ -1,9 +1,6 @@
 # Hack Assembler
 This is a simple hack assembler written in Rust.
 
-Hack is the machine code used in the [From Nand To Tetris](https://www.nand2tetris.org/course) course.
-
-
 # Example
 
 | ASM                                | HACK             |
